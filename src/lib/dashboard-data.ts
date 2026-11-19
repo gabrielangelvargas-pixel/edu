@@ -2,7 +2,6 @@ import "server-only";
 
 import type { RowDataPacket } from "mysql2";
 import { getPool, isDatabaseConfigured } from "@/lib/db";
-import { demoDashboard } from "@/lib/demo-data";
 import type { DashboardData, LotSummary, ProcessSummary } from "@/types/domain";
 
 type ProcessRow = RowDataPacket & { id: number; name: string; accent: string; active_lots: number };
@@ -13,8 +12,22 @@ type LotRow = RowDataPacket & {
   status: LotSummary["status"]; priority: LotSummary["priority"]; entered_at: Date; due_at: Date;
 };
 
+const emptyDashboard: DashboardData = {
+  source: "error",
+  stats: { activeLots: 0, totalWeight: 0, completedToday: 0, averageYield: 0 },
+  processes: [],
+  models: [],
+  operators: [],
+  lots: [],
+};
+
 export async function getDashboardData(): Promise<DashboardData> {
-  if (!isDatabaseConfigured()) return demoDashboard;
+  if (!isDatabaseConfigured()) {
+    return {
+      ...emptyDashboard,
+      databaseMessage: "La conexión MySQL todavía no está configurada.",
+    };
+  }
 
   try {
     const pool = getPool();
@@ -43,6 +56,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     };
   } catch (error) {
     console.error("No se pudo consultar MySQL:", error);
-    return { ...demoDashboard, databaseMessage: "MySQL está configurado, pero todavía no responde. La app continúa en modo demostración." };
+    return {
+      ...emptyDashboard,
+      databaseMessage: "No se pudo consultar MySQL. Intentá recargar la página en unos instantes.",
+    };
   }
 }

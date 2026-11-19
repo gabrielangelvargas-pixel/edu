@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Abrir `http://localhost:3000`. Sin variables de MySQL la aplicación funciona en modo demostración.
+Abrir `http://localhost:3000`. La aplicación requiere una conexión MySQL configurada.
 
 ## Conectar MySQL
 
@@ -37,7 +37,6 @@ Agregar en Hostinger las variables `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD
 - Indicadores de producción y flujo por procesos.
 - Búsqueda de lotes.
 - Alta básica de lotes.
-- Modo demostración sin base de datos.
 - Persistencia MySQL al configurar el entorno.
 - Esquema flexible para modelos, rutas, procesos, operadores, pesos, recortes y desperdicios.
 

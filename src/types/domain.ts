@@ -22,7 +22,7 @@ export type ProcessSummary = { id: string; name: string; activeLots: number; acc
 export type CatalogOption = { id: string; name: string };
 
 export type DashboardData = {
-  source: "demo" | "mysql";
+  source: "mysql" | "error";
   databaseMessage?: string;
   stats: { activeLots: number; totalWeight: number; completedToday: number; averageYield: number };
   processes: ProcessSummary[];

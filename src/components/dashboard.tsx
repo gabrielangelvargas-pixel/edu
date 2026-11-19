@@ -4,7 +4,7 @@ import {
   Activity, AlertTriangle, Boxes, CheckCircle2, ChevronRight, CircleGauge, Factory,
   LayoutDashboard, Menu, PackagePlus, Search, Settings, Users, Weight, X,
 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import type { DashboardData, LotSummary, Priority } from "@/types/domain";
 import styles from "./dashboard.module.css";
 
@@ -20,18 +20,10 @@ const formatWeight = (value: number) => new Intl.NumberFormat("es-AR", { minimum
 const formatDate = (value: string) => new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "short" }).format(new Date(`${value}T12:00:00`));
 
 export function Dashboard({ initialData }: { initialData: DashboardData }) {
-  const [data, setData] = useState(initialData);
+  const data = initialData;
   const [query, setQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [notice, setNotice] = useState("");
-
-  useEffect(() => {
-    fetch("/api/dashboard", { cache: "no-store" })
-      .then((response) => response.json())
-      .then(setData)
-      .catch(() => setNotice("No se pudo actualizar la información."));
-  }, []);
 
   const filteredLots = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("es");
@@ -77,10 +69,10 @@ export function Dashboard({ initialData }: { initialData: DashboardData }) {
         <div className={styles.content}>
           <section className={styles.hero}>
             <div><span className={styles.eyebrow}>PANEL DE PRODUCCIÓN</span><h2>Todo el taller, de un vistazo.</h2><p>Seguimiento de lotes, pesos y procesos en tiempo real.</p></div>
-            <div className={`${styles.modeBadge} ${data.source === "mysql" ? styles.live : ""}`}><span />{data.source === "mysql" ? "MySQL conectado" : "Modo demostración"}</div>
+            <div className={`${styles.modeBadge} ${data.source === "mysql" ? styles.live : ""}`}><span />{data.source === "mysql" ? "MySQL conectado" : "Sin conexión"}</div>
           </section>
 
-          {(data.databaseMessage || notice) && <div className={styles.warning}><AlertTriangle size={17} />{data.databaseMessage || notice}</div>}
+          {data.databaseMessage && <div className={styles.warning}><AlertTriangle size={17} />{data.databaseMessage}</div>}
 
           <section className={styles.stats} aria-label="Indicadores">
             <Metric icon={<Boxes size={20} />} label="Lotes activos" value={String(data.stats.activeLots)} detail="En 5 procesos" />
@@ -117,7 +109,7 @@ export function Dashboard({ initialData }: { initialData: DashboardData }) {
         </div>
       </main>
 
-      {modalOpen && <NewLotModal data={data} onClose={() => setModalOpen(false)} onCreated={(lot, message) => { if (lot) setData((current) => ({ ...current, lots: [lot, ...current.lots], stats: { ...current.stats, activeLots: current.stats.activeLots + 1, totalWeight: current.stats.totalWeight + lot.initialWeight } })); setNotice(message); setModalOpen(false); }} />}
+      {modalOpen && <NewLotModal data={data} onClose={() => setModalOpen(false)} />}
     </div>
   );
 }
@@ -139,7 +131,7 @@ function LotRow({ lot }: { lot: LotSummary }) {
   );
 }
 
-function NewLotModal({ data, onClose, onCreated }: { data: DashboardData; onClose: () => void; onCreated: (lot: LotSummary | null, message: string) => void }) {
+function NewLotModal({ data, onClose }: { data: DashboardData; onClose: () => void }) {
   const nextCode = `LT-${String(265 + data.lots.length).padStart(4, "0")}`;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -152,12 +144,7 @@ function NewLotModal({ data, onClose, onCreated }: { data: DashboardData; onClos
       const response = await fetch("/api/lots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "No se pudo crear el lote.");
-      const model = data.models.find((item) => item.id === payload.modelId);
-      const operator = data.operators.find((item) => item.id === payload.operatorId);
-      const firstProcess = data.processes[0];
-      const optimisticLot: LotSummary = { id: `temp-${Date.now()}`, code: payload.code, model: model?.name ?? "Sin modelo", modelId: payload.modelId, process: firstProcess?.name ?? "Pendiente", processId: firstProcess?.id ?? "0", operator: operator?.name ?? "Sin asignar", initialWeight: payload.initialWeight, currentWeight: payload.initialWeight, progress: 0, status: "Pendiente", priority: payload.priority, enteredAt: new Date().toISOString(), dueAt: payload.dueAt };
-      onCreated(result.simulated ? optimisticLot : null, result.simulated ? result.message : "Lote creado correctamente en MySQL.");
-      if (!result.simulated) window.location.reload();
+      window.location.reload();
     } catch (caught) { setError(caught instanceof Error ? caught.message : "No se pudo crear el lote."); setSubmitting(false); }
   }
 

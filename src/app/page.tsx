@@ -1,6 +1,12 @@
+import { connection } from "next/server";
 import { Dashboard } from "@/components/dashboard";
-import { demoDashboard } from "@/lib/demo-data";
+import { getDashboardData } from "@/lib/dashboard-data";
 
-export default function Home() {
-  return <Dashboard initialData={demoDashboard} />;
+export const instant = false;
+
+export default async function Home() {
+  await connection();
+  const data = await getDashboardData();
+
+  return <Dashboard initialData={data} />;
 }

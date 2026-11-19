@@ -17,7 +17,10 @@ export async function POST(request: Request) {
   const input = parsed.data;
 
   if (!isDatabaseConfigured()) {
-    return Response.json({ simulated: true, message: "Lote validado en modo demostración. Se guardará al conectar MySQL." }, { status: 201 });
+    return Response.json(
+      { error: "La conexión MySQL no está configurada." },
+      { status: 503 },
+    );
   }
 
   const connection = await getPool().getConnection();
@@ -42,7 +45,7 @@ export async function POST(request: Request) {
       [result.insertId, firstProcessId, input.operatorId ?? null, input.initialWeight],
     );
     await connection.commit();
-    return Response.json({ id: result.insertId, simulated: false }, { status: 201 });
+    return Response.json({ id: result.insertId }, { status: 201 });
   } catch (error) {
     await connection.rollback();
     console.error("No se pudo crear el lote:", error);
