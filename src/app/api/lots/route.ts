@@ -1,5 +1,6 @@
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { z } from "zod";
+import { getCurrentUser } from "@/lib/auth";
 import { getPool, isDatabaseConfigured } from "@/lib/db";
 
 const createLotSchema = z.object({
@@ -12,6 +13,10 @@ const createLotSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (!await getCurrentUser()) {
+    return Response.json({ error: "No autorizado." }, { status: 401 });
+  }
+
   const parsed = createLotSchema.safeParse(await request.json());
   if (!parsed.success) return Response.json({ error: "Revisá los datos del lote." }, { status: 400 });
   const input = parsed.data;

@@ -20,6 +20,15 @@ Abrir `http://localhost:3000`. La aplicación requiere una conexión MySQL confi
 
 La interfaz mostrará **MySQL conectado** cuando la configuración esté activa.
 
+## Acceso inicial
+
+Al primer acceso, la aplicación crea las tablas de autenticación y el usuario administrador si todavía no existe:
+
+- Usuario: `Admin`
+- Contraseña: `admin123`
+
+La contraseña se guarda como hash, nunca como texto plano. Las credenciales iniciales pueden personalizarse con `INITIAL_ADMIN_USERNAME` e `INITIAL_ADMIN_PASSWORD` antes del primer inicio.
+
 ## Despliegue en Hostinger
 
 - Framework: Next.js
@@ -37,7 +46,8 @@ Agregar en Hostinger las variables `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD
 - Indicadores de producción y flujo por procesos.
 - Búsqueda de lotes.
 - Alta básica de lotes.
+- Login con usuario y contraseña, sesión segura y rutas protegidas.
 - Persistencia MySQL al configurar el entorno.
 - Esquema flexible para modelos, rutas, procesos, operadores, pesos, recortes y desperdicios.
 
-La autenticación, edición de procesos y carga completa de movimientos se incorporarán después de validar este flujo con el cliente.
+La edición de procesos y la carga completa de movimientos se incorporarán después de validar este flujo con el cliente.

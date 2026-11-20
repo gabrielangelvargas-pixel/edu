@@ -2,9 +2,11 @@
 
 import {
   Activity, AlertTriangle, Boxes, CheckCircle2, ChevronRight, CircleGauge, Factory,
-  LayoutDashboard, Menu, PackagePlus, Search, Settings, Users, Weight, X,
+  LayoutDashboard, LogOut, Menu, PackagePlus, Search, Settings, Users, Weight, X,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
+import type { AuthUser } from "@/lib/auth";
 import type { DashboardData, LotSummary, Priority } from "@/types/domain";
 import styles from "./dashboard.module.css";
 
@@ -19,11 +21,23 @@ const navItems = [
 const formatWeight = (value: number) => new Intl.NumberFormat("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value);
 const formatDate = (value: string) => new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "short" }).format(new Date(`${value}T12:00:00`));
 
-export function Dashboard({ initialData }: { initialData: DashboardData }) {
+export function Dashboard({ initialData, user, dateLabel }: { initialData: DashboardData; user: AuthUser; dateLabel: string }) {
+  const router = useRouter();
   const data = initialData;
   const [query, setQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const firstName = user.displayName.split(/\s+/)[0];
+  const initials = user.displayName.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+  const roleLabel = user.role === "admin" ? "Administrador" : "Operador";
+
+  async function logout() {
+    setSigningOut(true);
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  }
 
   const filteredLots = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("es");
@@ -48,9 +62,9 @@ export function Dashboard({ initialData }: { initialData: DashboardData }) {
           <button><Settings size={18} /><span>Configuración</span></button>
         </nav>
         <div className={styles.sidebarFoot}>
-          <div className={styles.avatar}>GV</div>
-          <div><strong>Gabriel Vargas</strong><small>Administrador</small></div>
-          <ChevronRight size={17} />
+          <div className={styles.avatar}>{initials}</div>
+          <div><strong>{user.displayName}</strong><small>{roleLabel}</small></div>
+          <button onClick={logout} disabled={signingOut} title="Cerrar sesión" aria-label="Cerrar sesión"><LogOut size={17} /></button>
         </div>
       </aside>
 
@@ -59,7 +73,7 @@ export function Dashboard({ initialData }: { initialData: DashboardData }) {
       <main className={styles.main}>
         <header className={styles.topbar}>
           <button className={styles.menuButton} onClick={() => setMenuOpen(true)} aria-label="Abrir menú"><Menu size={22} /></button>
-          <div><p>Miércoles, 18 de noviembre</p><h1>Buen día, Gabriel</h1></div>
+          <div><p>{dateLabel}</p><h1>Buen día, {firstName}</h1></div>
           <div className={styles.topActions}>
             <label className={styles.search}><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lote..." /></label>
             <button className={styles.primaryButton} onClick={() => setModalOpen(true)}><PackagePlus size={18} />Nuevo lote</button>
