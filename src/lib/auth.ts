@@ -4,6 +4,7 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypt
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { cookies } from "next/headers";
 import { getPool } from "@/lib/db";
+import { ensureSpanishSchema } from "@/lib/spanish-schema";
 import type { AuthRole, AuthUser, ManagedUser } from "@/types/auth";
 
 const SESSION_COOKIE = "cadena_session";
@@ -12,12 +13,12 @@ const SCRYPT_KEY_LENGTH = 64;
 
 type UserRow = RowDataPacket & {
   id: number;
-  username: string;
-  display_name: string;
-  password_hash: string;
-  role: AuthRole | null;
-  is_active?: number;
-  created_at?: Date;
+  nombre_usuario: string;
+  nombre_visible: string;
+  hash_contrasena: string;
+  rol: AuthRole | null;
+  activo?: number;
+  fecha_creacion?: Date;
 };
 
 let schemaPromise: Promise<void> | undefined;
@@ -42,58 +43,59 @@ function hashSessionToken(token: string) {
 }
 
 function toAuthUser(row: UserRow): AuthUser {
-  if (!row.role) throw new Error("El usuario activo no tiene un rol asignado.");
+  if (!row.rol) throw new Error("El usuario activo no tiene un rol asignado.");
   return {
     id: String(row.id),
-    username: row.username,
-    displayName: row.display_name,
-    role: row.role,
+    username: row.nombre_usuario,
+    displayName: row.nombre_visible,
+    role: row.rol,
   };
 }
 
 async function initializeAuthSchema() {
+  await ensureSpanishSchema();
   const pool = getPool();
 
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
+    CREATE TABLE IF NOT EXISTS usuarios (
       id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-      username VARCHAR(80) NOT NULL UNIQUE,
-      display_name VARCHAR(120) NOT NULL,
-      password_hash VARCHAR(255) NOT NULL,
-      role ENUM('admin','supervisor','operator') NULL DEFAULT NULL,
-      is_active BOOLEAN NOT NULL DEFAULT FALSE,
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      nombre_usuario VARCHAR(80) NOT NULL UNIQUE,
+      nombre_visible VARCHAR(120) NOT NULL,
+      hash_contrasena VARCHAR(255) NOT NULL,
+      rol ENUM('admin','supervisor','operator') NULL DEFAULT NULL,
+      activo BOOLEAN NOT NULL DEFAULT FALSE,
+      fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      fecha_actualizacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
   await pool.query(`
-    ALTER TABLE users
-      MODIFY role ENUM('admin','supervisor','operator') NULL DEFAULT NULL,
-      MODIFY is_active BOOLEAN NOT NULL DEFAULT FALSE
+    ALTER TABLE usuarios
+      MODIFY rol ENUM('admin','supervisor','operator') NULL DEFAULT NULL,
+      MODIFY activo BOOLEAN NOT NULL DEFAULT FALSE
   `);
 
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS user_sessions (
-      token_hash CHAR(64) PRIMARY KEY,
-      user_id BIGINT UNSIGNED NOT NULL,
-      expires_at DATETIME NOT NULL,
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT fk_session_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-      INDEX idx_sessions_expiry (expires_at)
+    CREATE TABLE IF NOT EXISTS sesiones_usuario (
+      hash_token CHAR(64) PRIMARY KEY,
+      usuario_id BIGINT UNSIGNED NOT NULL,
+      fecha_vencimiento DATETIME NOT NULL,
+      fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_sesion_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+      INDEX idx_sesiones_vencimiento (fecha_vencimiento)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
   const initialUsername = process.env.INITIAL_ADMIN_USERNAME?.trim() || "Admin";
   const initialPassword = process.env.INITIAL_ADMIN_PASSWORD || "admin123";
   const [existing] = await pool.execute<UserRow[]>(
-    "SELECT id FROM users WHERE username = ? LIMIT 1",
+    "SELECT id FROM usuarios WHERE nombre_usuario = ? LIMIT 1",
     [initialUsername],
   );
 
   if (existing.length === 0) {
     await pool.execute<ResultSetHeader>(
-      "INSERT IGNORE INTO users (username, display_name, password_hash, role, is_active) VALUES (?, 'Administrador', ?, 'admin', TRUE)",
+      "INSERT IGNORE INTO usuarios (nombre_usuario, nombre_visible, hash_contrasena, rol, activo) VALUES (?, 'Administrador', ?, 'admin', TRUE)",
       [initialUsername, hashPassword(initialPassword)],
     );
   }
@@ -110,12 +112,12 @@ export function ensureAuthSchema() {
 export async function authenticateUser(username: string, password: string) {
   await ensureAuthSchema();
   const [rows] = await getPool().execute<UserRow[]>(
-    "SELECT id, username, display_name, password_hash, role, is_active FROM users WHERE username = ? LIMIT 1",
+    "SELECT id, nombre_usuario, nombre_visible, hash_contrasena, rol, activo FROM usuarios WHERE nombre_usuario = ? LIMIT 1",
     [username],
   );
   const user = rows[0];
-  if (!user || !verifyPassword(password, user.password_hash)) return { status: "invalid" as const };
-  if (!user.is_active || !user.role) return { status: "pending" as const };
+  if (!user || !verifyPassword(password, user.hash_contrasena)) return { status: "invalid" as const };
+  if (!user.activo || !user.rol) return { status: "pending" as const };
   return { status: "active" as const, user: toAuthUser(user) };
 }
 
@@ -123,7 +125,7 @@ export async function registerUser(input: { username: string; displayName: strin
   await ensureAuthSchema();
   try {
     await getPool().execute<ResultSetHeader>(
-      "INSERT INTO users (username, display_name, password_hash, role, is_active) VALUES (?, ?, ?, NULL, FALSE)",
+      "INSERT INTO usuarios (nombre_usuario, nombre_visible, hash_contrasena, rol, activo) VALUES (?, ?, ?, NULL, FALSE)",
       [input.username, input.displayName, hashPassword(input.password)],
     );
     return { created: true as const };
@@ -136,26 +138,26 @@ export async function registerUser(input: { username: string; displayName: strin
 export async function listUsers(): Promise<ManagedUser[]> {
   await ensureAuthSchema();
   const [rows] = await getPool().query<UserRow[]>(
-    "SELECT id, username, display_name, role, is_active, created_at FROM users ORDER BY is_active ASC, created_at DESC",
+    "SELECT id, nombre_usuario, nombre_visible, rol, activo, fecha_creacion FROM usuarios ORDER BY activo ASC, fecha_creacion DESC",
   );
   return rows.map((row) => ({
     id: String(row.id),
-    username: row.username,
-    displayName: row.display_name,
-    role: row.role,
-    isActive: Boolean(row.is_active),
-    createdAt: row.created_at?.toISOString() ?? new Date().toISOString(),
+    username: row.nombre_usuario,
+    displayName: row.nombre_visible,
+    role: row.rol,
+    isActive: Boolean(row.activo),
+    createdAt: row.fecha_creacion?.toISOString() ?? new Date().toISOString(),
   }));
 }
 
 export async function updateManagedUser(userId: string, input: { role: AuthRole | null; isActive: boolean }) {
   await ensureAuthSchema();
   await getPool().execute(
-    "UPDATE users SET role = ?, is_active = ? WHERE id = ?",
+    "UPDATE usuarios SET rol = ?, activo = ? WHERE id = ?",
     [input.role, input.isActive, userId],
   );
   if (!input.isActive || !input.role) {
-    await getPool().execute("DELETE FROM user_sessions WHERE user_id = ?", [userId]);
+    await getPool().execute("DELETE FROM sesiones_usuario WHERE usuario_id = ?", [userId]);
   }
 }
 
@@ -163,9 +165,9 @@ export async function createSession(userId: string) {
   await ensureAuthSchema();
   const token = randomBytes(32).toString("base64url");
 
-  await getPool().execute("DELETE FROM user_sessions WHERE expires_at <= NOW()");
+  await getPool().execute("DELETE FROM sesiones_usuario WHERE fecha_vencimiento <= NOW()");
   await getPool().execute(
-    "INSERT INTO user_sessions (token_hash, user_id, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))",
+    "INSERT INTO sesiones_usuario (hash_token, usuario_id, fecha_vencimiento) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))",
     [hashSessionToken(token), userId],
   );
 
@@ -184,10 +186,10 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   if (!token) return null;
 
   const [rows] = await getPool().execute<UserRow[]>(`
-    SELECT u.id, u.username, u.display_name, u.password_hash, u.role
-    FROM user_sessions s
-    INNER JOIN users u ON u.id = s.user_id
-    WHERE s.token_hash = ? AND s.expires_at > NOW() AND u.is_active = TRUE AND u.role IS NOT NULL
+    SELECT u.id, u.nombre_usuario, u.nombre_visible, u.hash_contrasena, u.rol
+    FROM sesiones_usuario s
+    INNER JOIN usuarios u ON u.id = s.usuario_id
+    WHERE s.hash_token = ? AND s.fecha_vencimiento > NOW() AND u.activo = TRUE AND u.rol IS NOT NULL
     LIMIT 1
   `, [hashSessionToken(token)]);
 
@@ -199,7 +201,7 @@ export async function destroySession() {
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (token) {
     await ensureAuthSchema();
-    await getPool().execute("DELETE FROM user_sessions WHERE token_hash = ?", [hashSessionToken(token)]);
+    await getPool().execute("DELETE FROM sesiones_usuario WHERE hash_token = ?", [hashSessionToken(token)]);
   }
   cookieStore.delete(SESSION_COOKIE);
 }

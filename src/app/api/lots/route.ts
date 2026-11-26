@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     try {
       await connection.beginTransaction();
       const [rows] = await connection.execute<RowDataPacket[]>(
-        "SELECT id FROM chain_models WHERE id = ? AND is_active = TRUE", [input.modelId],
+        "SELECT id FROM modelos_cadena WHERE id = ? AND activo = TRUE", [input.modelId],
       );
       if (!rows[0]) {
         await connection.rollback();
@@ -42,11 +42,11 @@ export async function POST(request: Request) {
 
       // Lock the day's counter until the lot is saved.
       await connection.execute(`
-        INSERT INTO lot_daily_sequences (entry_date) VALUES (?)
-        ON DUPLICATE KEY UPDATE last_number = last_number
+        INSERT INTO secuencias_diarias_lotes (fecha_alta) VALUES (?)
+        ON DUPLICATE KEY UPDATE ultimo_numero = ultimo_numero
       `, [input.enteredOn]);
       const [sequence] = await connection.execute<(RowDataPacket & { last_number: number })[]>(
-        "SELECT last_number FROM lot_daily_sequences WHERE entry_date = ? FOR UPDATE", [input.enteredOn],
+        "SELECT ultimo_numero AS last_number FROM secuencias_diarias_lotes WHERE fecha_alta = ? FOR UPDATE", [input.enteredOn],
       );
       const next = sequence[0].last_number + 1;
       if (next > 99) {
@@ -56,11 +56,11 @@ export async function POST(request: Request) {
       const [year, month, day] = input.enteredOn.split("-");
       const code = `${day}${month}${year.slice(-2)}${String(next).padStart(2, "0")}`;
       const enteredAt = `${input.enteredOn} 00:00:00`;
-      await connection.execute("UPDATE lot_daily_sequences SET last_number = ? WHERE entry_date = ?", [next, input.enteredOn]);
+      await connection.execute("UPDATE secuencias_diarias_lotes SET ultimo_numero = ? WHERE fecha_alta = ?", [next, input.enteredOn]);
 
       const [result] = await connection.execute<ResultSetHeader>(`
-        INSERT INTO lots (code, model_id, initial_weight,
-          current_weight, status, priority, entered_at)
+        INSERT INTO lotes (codigo, modelo_id, gramaje_inicial,
+          gramaje_actual, estado, prioridad, fecha_alta)
         VALUES (?, ?, ?, ?, 'Pendiente', ?, ?)
       `, [code, input.modelId, input.initialWeight,
         input.initialWeight, input.priority, enteredAt]);
