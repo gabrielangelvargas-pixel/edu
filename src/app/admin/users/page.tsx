@@ -17,11 +17,9 @@ export default async function UsersPage() {
   const users = await listUsers();
   return (
     <>
-      <AppNavigation user={currentUser} current="users" dateLabel={getWorkshopDateLabel()} />
+      <AppNavigation user={currentUser} current="users" dateLabel={getWorkshopDateLabel()} databaseConnected />
       <main className={styles.page}>
-        <header className={styles.header}>
-          <div><span>ADMINISTRACIÓN</span><h1>Usuarios y accesos</h1><p>Asigná un rol y activá las nuevas solicitudes para permitir su ingreso.</p></div>
-        </header>
+        <p className={styles.instructions}>Asigná un rol y activá las nuevas solicitudes para permitir su ingreso.</p>
         <UserManagement initialUsers={users} currentUserId={currentUser.id} />
       </main>
     </>

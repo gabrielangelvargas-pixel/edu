@@ -10,10 +10,11 @@ const roleLabels = { admin: "Administrador", supervisor: "Supervisor", operator:
 
 const screenTitles = { summary: "Resumen", lots: "Lotes", users: "Usuarios" };
 
-export function AppNavigation({ user, current, dateLabel }: {
+export function AppNavigation({ user, current, dateLabel, databaseConnected }: {
   user: Pick<AuthUser, "displayName" | "role">;
   current: keyof typeof screenTitles;
   dateLabel: string;
+  databaseConnected: boolean;
 }) {
   const drawer = useRef<HTMLDialogElement>(null);
   const initials = user.displayName.trim().split(/\s+/).slice(0, 2)
@@ -27,7 +28,7 @@ export function AppNavigation({ user, current, dateLabel }: {
           aria-haspopup="dialog" aria-controls="cadena-menu" onClick={() => drawer.current?.showModal()}>
           <Menu size={22} aria-hidden="true" />
         </button>
-        <strong className={styles.heading}>{screenTitles[current]}</strong>
+        <h1 className={styles.heading}>{screenTitles[current]}</h1>
         <p className={styles.date}>{dateLabel}</p>
       </header>
       <dialog ref={drawer} id="cadena-menu" className={styles.drawer}
@@ -57,6 +58,9 @@ export function AppNavigation({ user, current, dateLabel }: {
               </>
             )}
           </nav>
+          <p className={styles.databaseStatus} data-connected={databaseConnected}>
+            {databaseConnected ? "MySQL conectado" : "MySQL sin conexión"}
+          </p>
           <div className={styles.account}>
             <span className={styles.avatar} aria-hidden="true">{initials}</span>
             <div><strong>{user.displayName}</strong><small>{roleLabels[user.role]}</small></div>

@@ -1,5 +1,4 @@
 .topActions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-.lotsTitle { margin: 0 0 20px; font-family: Georgia, serif; font-size: 29px; font-weight: 500; }
 .search { width: 230px; height: 40px; border: 1px solid var(--line); border-radius: 8px; display: flex; gap: 8px; align-items: center; padding: 0 12px; color: #87928d; }
 .search:focus-within { border-color: #5b8975; box-shadow: 0 0 0 3px #e5f1eb; }
 .search input { width: 100%; border: 0; outline: 0; font-size: 12px; color: var(--ink); }
@@ -7,14 +6,8 @@
 .primaryButton:hover { background: #0e402f !important; }
 .primaryButton:disabled { opacity: .65; cursor: wait; }
 .content { max-width: 1420px; margin: 0 auto; padding: 30px 34px 50px; }
-.hero { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; }
 .eyebrow { display: block; color: #759083; font-weight: 800; letter-spacing: .14em; font-size: 9px; margin-bottom: 7px; }
-.hero h1 { font-family: Georgia, serif; font-size: 29px; line-height: 1.15; font-weight: 500; margin: 0 0 7px; }
-.hero p, .modalHeader p { color: var(--muted); font-size: 12px; margin: 0; }
-.modeBadge { border: 1px solid #e7ddc5; background: #fbf7ed; color: #7c6739; border-radius: 20px; padding: 7px 11px; font-size: 10px; display: flex; gap: 7px; align-items: center; }
-.modeBadge span { width: 7px; height: 7px; border-radius: 50%; background: #c59d44; box-shadow: 0 0 0 3px #efe2c0; }
-.modeBadge.live { border-color: #c8e3d6; background: #edf8f2; color: #28634c; }
-.modeBadge.live span { background: #3b9571; box-shadow: 0 0 0 3px #cce8db; }
+.modalHeader p { color: var(--muted); font-size: 12px; margin: 0; }
 .warning { margin: -10px 0 18px; border: 1px solid #ead9b5; background: #fffaf0; color: #765f2d; border-radius: 8px; padding: 10px 12px; display: flex; gap: 9px; align-items: center; font-size: 12px; }
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 16px; }
 .metric { min-width: 0; display: flex; gap: 13px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 18px; box-shadow: 0 4px 16px rgba(40,68,56,.035); }
@@ -81,10 +74,6 @@
   .search { flex: 1 1 150px; }
   .primaryButton { padding: 0 12px !important; }
   .content { padding: 23px 16px 40px; }
-  .hero { align-items: flex-start; gap: 15px; }
-  .hero h1 { font-size: 24px; }
-  .hero p { display: none; }
-  .modeBadge { white-space: nowrap; }
   .stats { grid-template-columns: 1fr 1fr; gap: 10px; }
   .metric { padding: 14px; gap: 9px; }
   .metricIcon { display: none; }
@@ -96,6 +85,4 @@
 
 @media (max-width: 440px) {
   .stats { grid-template-columns: 1fr; }
-  .hero { display: block; }
-  .modeBadge { width: max-content; margin-top: 13px; }
 }

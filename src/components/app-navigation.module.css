@@ -2,7 +2,7 @@
 .menuButton, .iconButton { display: grid; place-items: center; flex: 0 0 auto; width: 44px; height: 44px; border-radius: 8px; cursor: pointer; }
 .menuButton { border: 1px solid var(--line); background: var(--paper); color: var(--green); }
 .menuButton:hover { background: var(--mint); }
-.heading { font-family: Georgia, serif; font-size: 22px; font-weight: 500; }
+.heading { margin: 0; font-family: Georgia, serif; font-size: 22px; font-weight: 500; }
 .date { margin: 0 0 0 auto; text-align: right; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; }
 
 .drawer { position: fixed; inset: 0 auto 0 0; margin: 0; padding: 0; width: min(320px, 92vw); max-width: none; height: 100dvh; max-height: none; border: 0; background: #103d2f; color: #fff; box-shadow: 12px 0 32px #10241c33; }
@@ -18,6 +18,9 @@
 .nav p { margin: 20px 12px 6px; color: #bdd2c9; font-size: 10px; font-weight: 700; letter-spacing: .12em; }
 .nav a { display: flex; align-items: center; gap: 12px; min-height: 44px; margin: 3px 0; padding: 0 12px; border-radius: 8px; color: #e1eee8; text-decoration: none; }
 .nav a[aria-current="page"] { background: #ffffff1b; box-shadow: inset 3px 0 #d8bd73; color: #fff; }
+.databaseStatus { display: flex; align-items: center; gap: 8px; align-self: flex-start; margin: 0 0 14px; padding: 6px 10px; border: 1px solid #ffffff30; border-radius: 20px; color: #ffdf9d; font-size: 11px; }
+.databaseStatus::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.databaseStatus[data-connected="true"] { color: #a9e5c9; }
 .account { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 10px; align-items: center; overflow-wrap: anywhere; border-top: 1px solid #ffffff22; padding-top: 14px; font-size: 13px; }
 .avatar { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #d8bd73; color: #204b3b; font-size: 11px; font-weight: 800; }
 

@@ -1,8 +1,5 @@
 .page { min-height: 100vh; max-width: 1120px; margin: 0 auto; padding: 46px 28px 70px; }
-.header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 26px; }
-.header span { color: #718c80; font-size: 9px; font-weight: 800; letter-spacing: .16em; }
-.header h1 { margin: 7px 0 6px; color: #173c2e; font-family: Georgia, serif; font-size: 32px; font-weight: 500; }
-.header p { margin: 0; color: #66736d; font-size: 12px; }
+.instructions { margin: 0 0 18px; color: #66736d; font-size: 12px; }
 .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
 .summary article { padding: 17px 19px; border: 1px solid #dfe7e2; border-radius: 10px; background: #fff; }
 .summary span { display: block; color: #718078; font-size: 10px; }
@@ -27,9 +24,6 @@
 
 @media (max-width: 760px) {
   .page { padding: 28px 16px 50px; }
-  .header { align-items: flex-start; }
-  .header h1 { font-size: 27px; }
-  .header p { max-width: 440px; }
   .summary { grid-template-columns: 1fr 1fr 1fr; }
   .panelHeader { display: none; }
   .userRow { grid-template-columns: 1fr 1fr; gap: 12px; padding: 18px; }
@@ -38,7 +32,6 @@
 }
 
 @media (max-width: 480px) {
-  .header { display: block; }
   .summary { grid-template-columns: 1fr; }
   .userRow { grid-template-columns: 1fr; }
   .identity, .message { grid-column: 1; }

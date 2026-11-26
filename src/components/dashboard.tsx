@@ -9,11 +9,6 @@ const formatWeight = (value: number) => new Intl.NumberFormat("es-AR", { minimum
 export function Dashboard({ data }: { data: DashboardData }) {
   return (
     <main className={styles.content}>
-      <section className={styles.hero}>
-        <div><span className={styles.eyebrow}>PANEL DE PRODUCCIÓN</span><h1>Todo el taller, de un vistazo.</h1><p>Seguimiento de lotes, pesos y procesos en tiempo real.</p></div>
-        <div className={`${styles.modeBadge} ${data.source === "mysql" ? styles.live : ""}`}><span />{data.source === "mysql" ? "MySQL conectado" : "Sin conexión"}</div>
-      </section>
-
       {data.databaseMessage && <div className={styles.warning}><AlertTriangle size={17} />{data.databaseMessage}</div>}
 
       <section className={styles.stats} aria-label="Indicadores">

@@ -16,7 +16,7 @@ export default async function Home() {
   const data = await getDashboardData();
   return (
     <>
-      <AppNavigation user={user} current="summary" dateLabel={getWorkshopDateLabel()} />
+      <AppNavigation user={user} current="summary" dateLabel={getWorkshopDateLabel()} databaseConnected={data.source === "mysql"} />
       <Dashboard data={data} />
     </>
   );

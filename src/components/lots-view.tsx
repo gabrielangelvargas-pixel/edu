@@ -18,7 +18,6 @@ export function LotsView({ data }: { data: LotsData }) {
 
   return (
     <main className={styles.content}>
-      <h1 className={styles.lotsTitle}>Lotes de producción</h1>
       <div className={styles.topActions}>
         <label className={styles.search}>
           <Search size={17} aria-hidden="true" />
