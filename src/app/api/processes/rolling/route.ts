@@ -2,7 +2,7 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { getPool } from "@/lib/db";
-import { rollingSlug } from "@/lib/rolling";
+import { ensureRollingReceipts, rollingSlug } from "@/lib/rolling";
 import { toMilligrams } from "@/lib/weights";
 import { getWorkshopDate } from "@/lib/workshop-date";
 
@@ -12,6 +12,46 @@ const startSchema = z.object({
   operatorId: z.string().regex(/^[1-9]\d{0,19}$/),
   enteredOn: z.iso.date(),
 });
+
+export async function PUT(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) return Response.json({ error: "No autorizado." }, { status: 401 });
+  if (user.role !== "admin" && user.role !== "supervisor") {
+    return Response.json({ error: "Solo Administrador y Supervisor pueden editar el envío." }, { status: 403 });
+  }
+
+  const parsed = startSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success || parsed.data.enteredOn > getWorkshopDate()) {
+    return Response.json({ error: "Seleccioná un operario y una fecha de envío válida." }, { status: 400 });
+  }
+  const { processId, operatorId, enteredOn } = parsed.data;
+
+  try {
+    await ensureRollingReceipts();
+    const [result] = await getPool().execute<ResultSetHeader>(`
+      UPDATE lot_processes lp
+      JOIN lots l ON l.id = lp.lot_id
+      JOIN processes p ON p.id = lp.process_id AND p.slug = ?
+      JOIN operators o ON o.id = ? AND (o.is_active = TRUE OR o.id = lp.operator_id)
+      SET l.assigned_operator_id = IF(l.current_process_id = lp.process_id, o.id, l.assigned_operator_id),
+          lp.operator_id = o.id, lp.started_at = ?
+      WHERE lp.id = ? AND lp.started_at IS NOT NULL
+        AND DATE(l.entered_at) <= ?
+        AND (lp.finished_at IS NULL OR DATE(lp.finished_at) >= ?)
+        AND NOT EXISTS (
+          SELECT 1 FROM lot_process_receipts r
+          WHERE r.lot_process_id = lp.id AND r.received_at < ?
+        )
+    `, [rollingSlug, operatorId, `${enteredOn} 00:00:00`, processId, enteredOn, enteredOn, `${enteredOn} 00:00:00`]);
+    if (!result.affectedRows) {
+      return Response.json({ error: "Revisá el operario y la fecha. El envío debe estar entre el alta del lote y su recepción o salida, si están registradas." }, { status: 409 });
+    }
+    return Response.json({ ok: true });
+  } catch (error) {
+    console.error("No se pudo editar el envío:", error);
+    return Response.json({ error: "No se pudo guardar el envío. Intentá nuevamente." }, { status: 500 });
+  }
+}
 
 export async function POST(request: Request) {
   if (!await getCurrentUser()) {
@@ -57,6 +97,7 @@ type ProcessRow = RowDataPacket & {
   status: string;
   isCurrent: number;
   enteredOn: string;
+  receivedOn: string | null;
   inputWeight: number | string;
 };
 
@@ -69,13 +110,16 @@ export async function PATCH(request: Request) {
   const input = parsed.data;
 
   try {
+    await ensureRollingReceipts();
     const connection = await getPool().getConnection();
     try {
       await connection.beginTransaction();
       const [rows] = await connection.execute<ProcessRow[]>(`
         SELECT CAST(lp.lot_id AS CHAR) AS lotId, lp.status,
           (l.current_process_id = lp.process_id AND l.status = 'En proceso') AS isCurrent,
-          DATE_FORMAT(lp.started_at, '%Y-%m-%d') AS enteredOn, lp.input_weight AS inputWeight
+          DATE_FORMAT(lp.started_at, '%Y-%m-%d') AS enteredOn, lp.input_weight AS inputWeight,
+          (SELECT DATE_FORMAT(MAX(r.received_at), '%Y-%m-%d') FROM lot_process_receipts r
+            WHERE r.lot_process_id = lp.id) AS receivedOn
         FROM lot_processes lp
         JOIN processes p ON p.id = lp.process_id
         JOIN lots l ON l.id = lp.lot_id
@@ -87,9 +131,9 @@ export async function PATCH(request: Request) {
         await connection.rollback();
         return Response.json({ error: "El registro ya se cerró o no está disponible." }, { status: 409 });
       }
-      if (input.finishedOn < process.enteredOn || input.finishedOn > getWorkshopDate()) {
+      if (input.finishedOn < (process.receivedOn ?? process.enteredOn) || input.finishedOn > getWorkshopDate()) {
         await connection.rollback();
-        return Response.json({ error: "La salida debe estar entre la fecha de entrada y hoy." }, { status: 400 });
+        return Response.json({ error: "La salida no puede ser anterior al envío o a la recepción registrada, ni posterior a hoy." }, { status: 400 });
       }
       const difference = toMilligrams(Number(process.inputWeight)) -
         toMilligrams(input.outputWeight) - toMilligrams(input.scrapWeight);

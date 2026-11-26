@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import type { CatalogOption } from "@/types/domain";
 import styles from "./dashboard.module.css";
 
-export function RollingStartForm({ id, lotDate, today, operators }: {
+export function RollingStartForm({ id, lotDate, today, operators, assignment }: {
   id: string;
   lotDate: string;
   today: string;
   operators: CatalogOption[];
+  assignment?: { enteredOn: string; operatorId: string };
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -22,7 +23,7 @@ export function RollingStartForm({ id, lotDate, today, operators }: {
     setError("");
     try {
       const response = await fetch("/api/processes/rolling", {
-        method: "POST",
+        method: assignment ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ processId: id, operatorId: form.get("operatorId"), enteredOn: form.get("enteredOn") }),
       });
@@ -31,6 +32,7 @@ export function RollingStartForm({ id, lotDate, today, operators }: {
         throw new Error(result.error || "No se pudo iniciar la etapa.");
       }
       router.refresh();
+      if (assignment) setSaving(false);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No se pudo iniciar la etapa.");
       setSaving(false);
@@ -42,16 +44,16 @@ export function RollingStartForm({ id, lotDate, today, operators }: {
   return (
     <form onSubmit={submit} className={styles.rollingForm}>
       <fieldset disabled={saving} className={styles.formGrid}>
-        <label><span>Fecha de entrada a la etapa</span><input name="enteredOn" type="date" defaultValue={today} min={lotDate} max={today} required /></label>
+        <label><span>Fecha de envío a la etapa</span><input name="enteredOn" type="date" defaultValue={assignment?.enteredOn ?? today} min={lotDate} max={today} required /></label>
         <label>
           <span>Operario de la etapa</span>
-          <select name="operatorId" defaultValue="" required>
+          <select name="operatorId" defaultValue={assignment?.operatorId ?? ""} required>
             <option value="" disabled>Seleccioná un operario</option>
             {operators.map((operator) => <option value={operator.id} key={operator.id}>{operator.name}</option>)}
           </select>
         </label>
         {error && <p className={styles.formError} role="alert">{error}</p>}
-        <button type="submit" className={styles.primaryButton}>{saving ? "Guardando..." : "Iniciar etapa"}</button>
+        <button type="submit" className={styles.primaryButton}>{saving ? "Guardando..." : assignment ? "Guardar cambios" : "Iniciar etapa"}</button>
       </fieldset>
     </form>
   );
