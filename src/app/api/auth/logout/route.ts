@@ -1,6 +1,9 @@
 import { destroySession } from "@/lib/auth";
 
-export async function POST(request: Request) {
+export async function POST() {
   await destroySession();
-  return Response.redirect(new URL("/login", request.url), 303);
+  return new Response(null, {
+    status: 303,
+    headers: { Location: "/login" },
+  });
 }
