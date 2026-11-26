@@ -10,12 +10,13 @@
 .closeMenu { display: none; }
 .nav { flex: 1; padding-top: 24px; }
 .nav p { color: #73998a; font-size: 9px; font-weight: 700; letter-spacing: .16em; margin: 10px 10px 8px; }
-.nav button { position: relative; width: 100%; height: 44px; border: 0; border-radius: 8px; background: transparent; color: #b9cec6; display: flex; align-items: center; gap: 12px; padding: 0 12px; margin: 2px 0; cursor: pointer; text-align: left; }
-.nav button:hover { background: rgba(255,255,255,.06); color: #fff; }
+.nav button, .nav a { position: relative; width: 100%; height: 44px; border: 0; border-radius: 8px; background: transparent; color: #b9cec6; display: flex; align-items: center; gap: 12px; padding: 0 12px; margin: 2px 0; cursor: pointer; text-align: left; text-decoration: none; }
+.nav button:hover, .nav a:hover { background: rgba(255,255,255,.06); color: #fff; }
 .nav .navActive { background: rgba(255,255,255,.11); color: #fff; }
 .navActive i { position: absolute; right: 0; width: 3px; height: 22px; border-radius: 3px 0 0 3px; background: #d8bd73; }
 .sidebarFoot { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center; border-top: 1px solid rgba(255,255,255,.12); padding: 18px 5px 0; }
 .sidebarFoot strong { font-size: 12px; }
+.sidebarFoot form { margin: 0; }
 .sidebarFoot button { width: 30px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 7px; background: transparent; color: #a9c2b8; cursor: pointer; }
 .sidebarFoot button:hover { background: rgba(255,255,255,.09); color: #fff; }
 .sidebarFoot button:disabled { opacity: .55; cursor: wait; }

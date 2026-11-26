@@ -4,7 +4,7 @@ import {
   Activity, AlertTriangle, Boxes, CheckCircle2, ChevronRight, CircleGauge, Factory,
   LayoutDashboard, LogOut, Menu, PackagePlus, Search, Users, Weight, X,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import type { AuthUser } from "@/types/auth";
 import type { DashboardData, LotSummary, Priority } from "@/types/domain";
@@ -22,22 +22,13 @@ const formatWeight = (value: number) => new Intl.NumberFormat("es-AR", { minimum
 const formatDate = (value: string) => new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "short" }).format(new Date(`${value}T12:00:00`));
 
 export function Dashboard({ initialData, user, dateLabel }: { initialData: DashboardData; user: AuthUser; dateLabel: string }) {
-  const router = useRouter();
   const data = initialData;
   const [query, setQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
   const firstName = user.displayName.split(/\s+/)[0];
   const initials = user.displayName.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
   const roleLabel = user.role === "admin" ? "Administrador" : user.role === "supervisor" ? "Supervisor" : "Operario";
-
-  async function logout() {
-    setSigningOut(true);
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.replace("/login");
-    router.refresh();
-  }
 
   const filteredLots = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("es");
@@ -58,12 +49,12 @@ export function Dashboard({ initialData, user, dateLabel }: { initialData: Dashb
           {navItems.map(({ label, icon: Icon, active }) => (
             <button className={active ? styles.navActive : ""} key={label}><Icon size={18} /><span>{label}</span>{active && <i />}</button>
           ))}
-          {user.role === "admin" && <><p>ADMINISTRACIÓN</p><button onClick={() => router.push("/admin/users")}><Users size={18} /><span>Usuarios</span></button></>}
+          {user.role === "admin" && <><p>ADMINISTRACIÓN</p><Link href="/admin/users"><Users size={18} /><span>Usuarios</span></Link></>}
         </nav>
         <div className={styles.sidebarFoot}>
           <div className={styles.avatar}>{initials}</div>
           <div><strong>{user.displayName}</strong><small>{roleLabel}</small></div>
-          <button onClick={logout} disabled={signingOut} title="Cerrar sesión" aria-label="Cerrar sesión"><LogOut size={17} /></button>
+          <form action="/api/auth/logout" method="post"><button type="submit" title="Cerrar sesión" aria-label="Cerrar sesión"><LogOut size={17} /></button></form>
         </div>
       </aside>
 
