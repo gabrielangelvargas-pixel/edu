@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import type { CatalogOption } from "@/types/domain";
 import styles from "./dashboard.module.css";
 
-export function RollingStartForm({ id, lotDate, today, operators, assignment }: {
+export function RollingStartForm({ id, lotDate, today, currentTime, operators, assignment }: {
   id: string;
   lotDate: string;
   today: string;
+  currentTime: string;
   operators: CatalogOption[];
-  assignment?: { enteredOn: string; operatorId: string };
+  assignment?: { enteredOn: string; enteredTime: string | null; operatorId: string };
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -25,7 +26,10 @@ export function RollingStartForm({ id, lotDate, today, operators, assignment }: 
       const response = await fetch("/api/processes/rolling", {
         method: assignment ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ processId: id, operatorId: form.get("operatorId"), enteredOn: form.get("enteredOn") }),
+        body: JSON.stringify({
+          processId: id, operatorId: form.get("operatorId"),
+          enteredOn: form.get("enteredOn"), enteredTime: form.get("enteredTime") || null,
+        }),
       });
       if (!response.ok) {
         const result = await response.json();
@@ -44,7 +48,12 @@ export function RollingStartForm({ id, lotDate, today, operators, assignment }: 
   return (
     <form onSubmit={submit} className={styles.rollingForm}>
       <fieldset disabled={saving} className={styles.formGrid}>
-        <label><span>Fecha de envío a la etapa</span><input name="enteredOn" type="date" defaultValue={assignment?.enteredOn ?? today} min={lotDate} max={today} required /></label>
+        <label><span>Fecha de entrada</span><input name="enteredOn" type="date" defaultValue={assignment?.enteredOn ?? today} min={lotDate} max={today} required /></label>
+        <label>
+          <span>Hora de entrada</span>
+          <input name="enteredTime" type="time" defaultValue={assignment ? assignment.enteredTime ?? "" : currentTime}
+            required={!assignment || assignment.enteredTime !== null} />
+        </label>
         <label>
           <span>Operario de la etapa</span>
           <select name="operatorId" defaultValue={assignment?.operatorId ?? ""} required>

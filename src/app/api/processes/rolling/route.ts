@@ -2,16 +2,21 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { getPool } from "@/lib/db";
-import { ensureRollingReceipts, rollingSlug } from "@/lib/rolling";
+import { ensureRollingEntryTime, rollingSlug } from "@/lib/rolling";
 import { toMilligrams } from "@/lib/weights";
-import { getWorkshopDate } from "@/lib/workshop-date";
+import { getWorkshopDate, getWorkshopTimestamp } from "@/lib/workshop-date";
 
 const weight = z.number().min(0).max(999999).refine((value) => toMilligrams(value) / 1000 === value);
 const startSchema = z.object({
   processId: z.string().regex(/^[1-9]\d{0,19}$/),
   operatorId: z.string().regex(/^[1-9]\d{0,19}$/),
   enteredOn: z.iso.date(),
+  enteredTime: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/).nullable(),
 });
+
+function entryTimestamp(date: string, time: string | null) {
+  return `${date} ${time ?? "00:00"}:00`;
+}
 
 export async function PUT(request: Request) {
   const user = await getCurrentUser();
@@ -21,30 +26,28 @@ export async function PUT(request: Request) {
   }
 
   const parsed = startSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success || parsed.data.enteredOn > getWorkshopDate()) {
-    return Response.json({ error: "Seleccioná un operario y una fecha de envío válida." }, { status: 400 });
+  if (!parsed.success || entryTimestamp(parsed.data.enteredOn, parsed.data.enteredTime) > getWorkshopTimestamp()) {
+    return Response.json({ error: "Seleccioná un operario y una fecha y hora de entrada válidas." }, { status: 400 });
   }
-  const { processId, operatorId, enteredOn } = parsed.data;
+  const { processId, operatorId, enteredOn, enteredTime } = parsed.data;
 
   try {
-    await ensureRollingReceipts();
+    await ensureRollingEntryTime();
     const [result] = await getPool().execute<ResultSetHeader>(`
       UPDATE lot_processes lp
       JOIN lots l ON l.id = lp.lot_id
       JOIN processes p ON p.id = lp.process_id AND p.slug = ?
       JOIN operators o ON o.id = ? AND (o.is_active = TRUE OR o.id = lp.operator_id)
       SET l.assigned_operator_id = IF(l.current_process_id = lp.process_id, o.id, l.assigned_operator_id),
-          lp.operator_id = o.id, lp.started_at = ?
+          lp.operator_id = o.id, lp.started_at = ?, lp.started_time_known = ?
       WHERE lp.id = ? AND lp.started_at IS NOT NULL
+        AND (? OR lp.started_time_known = FALSE)
         AND DATE(l.entered_at) <= ?
         AND (lp.finished_at IS NULL OR DATE(lp.finished_at) >= ?)
-        AND NOT EXISTS (
-          SELECT 1 FROM lot_process_receipts r
-          WHERE r.lot_process_id = lp.id AND r.received_at < ?
-        )
-    `, [rollingSlug, operatorId, `${enteredOn} 00:00:00`, processId, enteredOn, enteredOn, `${enteredOn} 00:00:00`]);
+    `, [rollingSlug, operatorId, entryTimestamp(enteredOn, enteredTime), enteredTime !== null,
+      processId, enteredTime !== null, enteredOn, enteredOn]);
     if (!result.affectedRows) {
-      return Response.json({ error: "Revisá el operario y la fecha. El envío debe estar entre el alta del lote y su recepción o salida, si están registradas." }, { status: 409 });
+      return Response.json({ error: "Revisá el operario y la fecha. La entrada debe estar entre el alta del lote y su salida, si ya se registró." }, { status: 409 });
     }
     return Response.json({ ok: true });
   } catch (error) {
@@ -58,22 +61,24 @@ export async function POST(request: Request) {
     return Response.json({ error: "No autorizado." }, { status: 401 });
   }
   const parsed = startSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success || parsed.data.enteredOn > getWorkshopDate()) {
-    return Response.json({ error: "Seleccioná un operario y una fecha de entrada válida." }, { status: 400 });
+  if (!parsed.success || !parsed.data.enteredTime ||
+    entryTimestamp(parsed.data.enteredOn, parsed.data.enteredTime) > getWorkshopTimestamp()) {
+    return Response.json({ error: "Seleccioná un operario y una fecha y hora de entrada válidas." }, { status: 400 });
   }
-  const { processId, operatorId, enteredOn } = parsed.data;
+  const { processId, operatorId, enteredOn, enteredTime } = parsed.data;
 
   try {
+    await ensureRollingEntryTime();
     const [result] = await getPool().execute<ResultSetHeader>(`
       UPDATE lot_processes lp
       JOIN lots l ON l.id = lp.lot_id AND l.current_process_id = lp.process_id
       JOIN processes p ON p.id = lp.process_id AND p.slug = ? AND p.is_active = TRUE
       JOIN operators o ON o.id = ? AND o.is_active = TRUE
-      SET lp.status = 'En proceso', lp.operator_id = o.id, lp.started_at = ?,
+      SET lp.status = 'En proceso', lp.operator_id = o.id, lp.started_at = ?, lp.started_time_known = TRUE,
           lp.input_weight = l.current_weight, l.status = 'En proceso', l.assigned_operator_id = o.id
       WHERE lp.id = ? AND lp.status = 'Pendiente' AND lp.started_at IS NULL
         AND l.status = 'Pendiente' AND DATE(l.entered_at) <= ?
-    `, [rollingSlug, operatorId, `${enteredOn} 00:00:00`, processId, enteredOn]);
+    `, [rollingSlug, operatorId, entryTimestamp(enteredOn, enteredTime), processId, enteredOn]);
     if (!result.affectedRows) {
       return Response.json({ error: "Verificá que el lote siga pendiente, el operario esté activo y la entrada sea igual o posterior al alta." }, { status: 409 });
     }
@@ -97,7 +102,6 @@ type ProcessRow = RowDataPacket & {
   status: string;
   isCurrent: number;
   enteredOn: string;
-  receivedOn: string | null;
   inputWeight: number | string;
 };
 
@@ -110,16 +114,13 @@ export async function PATCH(request: Request) {
   const input = parsed.data;
 
   try {
-    await ensureRollingReceipts();
     const connection = await getPool().getConnection();
     try {
       await connection.beginTransaction();
       const [rows] = await connection.execute<ProcessRow[]>(`
         SELECT CAST(lp.lot_id AS CHAR) AS lotId, lp.status,
           (l.current_process_id = lp.process_id AND l.status = 'En proceso') AS isCurrent,
-          DATE_FORMAT(lp.started_at, '%Y-%m-%d') AS enteredOn, lp.input_weight AS inputWeight,
-          (SELECT DATE_FORMAT(MAX(r.received_at), '%Y-%m-%d') FROM lot_process_receipts r
-            WHERE r.lot_process_id = lp.id) AS receivedOn
+          DATE_FORMAT(lp.started_at, '%Y-%m-%d') AS enteredOn, lp.input_weight AS inputWeight
         FROM lot_processes lp
         JOIN processes p ON p.id = lp.process_id
         JOIN lots l ON l.id = lp.lot_id
@@ -131,9 +132,9 @@ export async function PATCH(request: Request) {
         await connection.rollback();
         return Response.json({ error: "El registro ya se cerró o no está disponible." }, { status: 409 });
       }
-      if (input.finishedOn < (process.receivedOn ?? process.enteredOn) || input.finishedOn > getWorkshopDate()) {
+      if (input.finishedOn < process.enteredOn || input.finishedOn > getWorkshopDate()) {
         await connection.rollback();
-        return Response.json({ error: "La salida no puede ser anterior al envío o a la recepción registrada, ni posterior a hoy." }, { status: 400 });
+        return Response.json({ error: "La salida debe estar entre la fecha de entrada y hoy." }, { status: 400 });
       }
       const difference = toMilligrams(Number(process.inputWeight)) -
         toMilligrams(input.outputWeight) - toMilligrams(input.scrapWeight);

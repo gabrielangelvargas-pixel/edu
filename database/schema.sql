@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS lot_processes (
   scrap_weight DECIMAL(12,3) NOT NULL DEFAULT 0,
   waste_weight DECIMAL(12,3) NOT NULL DEFAULT 0,
   started_at DATETIME NULL,
+  started_time_known BOOLEAN NOT NULL DEFAULT FALSE,
   finished_at DATETIME NULL,
   notes TEXT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -101,18 +102,6 @@ CREATE TABLE IF NOT EXISTS lot_processes (
   CONSTRAINT fk_lot_process_operator FOREIGN KEY (operator_id) REFERENCES operators(id),
   INDEX idx_lot_processes_lot (lot_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS lot_process_receipts (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  lot_process_id BIGINT UNSIGNED NOT NULL,
-  operator_id BIGINT UNSIGNED NOT NULL,
-  recorded_by BIGINT UNSIGNED NOT NULL,
-  received_at DATETIME NOT NULL,
-  INDEX idx_process_receipts (lot_process_id, id),
-  FOREIGN KEY (lot_process_id) REFERENCES lot_processes(id),
-  FOREIGN KEY (operator_id) REFERENCES operators(id),
-  FOREIGN KEY (recorded_by) REFERENCES users(id)
-) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS metal_movements (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

@@ -3,13 +3,12 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { AppNavigation } from "@/components/app-navigation";
 import { RollingCloseForm } from "@/components/rolling-close-form";
-import { RollingReceiptButton } from "@/components/rolling-receipt-button";
 import { RollingStartForm } from "@/components/rolling-start-form";
 import styles from "@/components/dashboard.module.css";
 import { getCurrentUser } from "@/lib/auth";
 import { getRollingOperators, getRollingRecords } from "@/lib/rolling";
 import { formatGrams, toMilligrams } from "@/lib/weights";
-import { getWorkshopDate, getWorkshopDateLabel } from "@/lib/workshop-date";
+import { getWorkshopDateLabel, getWorkshopTimestamp } from "@/lib/workshop-date";
 
 export const instant = false;
 
@@ -27,7 +26,9 @@ export default async function RollingPage() {
     return null;
   });
   const [records, operators] = data ?? [null, []];
-  const today = getWorkshopDate();
+  const timestamp = getWorkshopTimestamp();
+  const today = timestamp.slice(0, 10);
+  const currentTime = timestamp.slice(11, 16);
   const canEditAssignment = user.role === "admin" || user.role === "supervisor";
 
   return (
@@ -46,15 +47,14 @@ export default async function RollingPage() {
               <span className={styles.processPill}>{record.status === "Terminado" ? "Finalizado" : record.status}</span>
             </div>
             <dl className={styles.rollingDetails}>
-              <div><dt>{record.enteredOn ? "Fecha de envío" : "Fecha de alta del lote"}</dt><dd>{shortDate(record.enteredOn ?? record.lotDate)}</dd></div>
-              <div><dt>{record.inputWeight === null ? "Lingote disponible" : "Lingote de entrada"}</dt><dd>{formatGrams(Number(record.inputWeight ?? record.availableWeight))} g</dd></div>
+              <div>
+                <dt>Entrada</dt>
+                <dd>{record.enteredOn
+                  ? `${shortDate(record.enteredOn)} ${record.enteredTime ?? "· Hora sin registrar"}`
+                  : "Pendiente"}</dd>
+              </div>
+              <div><dt>Gramaje Inicial</dt><dd>{formatGrams(Number(record.inputWeight ?? record.availableWeight))} g</dd></div>
               <div><dt>Operario</dt><dd>{record.operator || "Sin asignar"}</dd></div>
-              {record.enteredOn && (
-                <div>
-                  <dt>Última recepción registrada</dt>
-                  <dd>{record.receivedAt ? `${record.receivedAt} · ${record.recipient}` : "Sin registrar"}</dd>
-                </div>
-              )}
               {record.finishedOn && (
                 <>
                   <div><dt>Fecha de salida</dt><dd>{shortDate(record.finishedOn)}</dd></div>
@@ -71,29 +71,26 @@ export default async function RollingPage() {
             {record.status === "Pendiente" && !record.enteredOn && (
               <details className={styles.rollingDetailsToggle}>
                 <summary>Enviar a proceso</summary>
-                <RollingStartForm id={record.id} lotDate={record.lotDate} today={today} operators={operators} />
+                <RollingStartForm id={record.id} lotDate={record.lotDate} today={today} currentTime={currentTime} operators={operators} />
               </details>
             )}
             {canEditAssignment && record.enteredOn && (
               <details className={styles.rollingDetailsToggle}>
-                <summary>Editar envío y operario</summary>
+                <summary>Editar entrada y operario</summary>
                 <RollingStartForm
-                  key={`${record.enteredOn}:${record.operatorId}`}
-                  id={record.id} lotDate={record.lotDate} today={today}
-                  assignment={{ enteredOn: record.enteredOn, operatorId: record.operatorId ?? "" }}
+                  key={`${record.enteredOn}:${record.enteredTime}:${record.operatorId}`}
+                  id={record.id} lotDate={record.lotDate} today={today} currentTime={currentTime}
+                  assignment={{ enteredOn: record.enteredOn, enteredTime: record.enteredTime, operatorId: record.operatorId ?? "" }}
                   operators={record.operatorId && !operators.some((operator) => operator.id === record.operatorId)
                     ? [...operators, { id: record.operatorId, name: record.operator }]
                     : operators}
                 />
               </details>
             )}
-            {record.status === "En proceso" && record.operatorId && record.operatorId !== record.recipientId && (
-              <RollingReceiptButton key={record.operatorId} id={record.id} operatorId={record.operatorId} />
-            )}
             {record.status === "En proceso" && record.enteredOn && (
               <details className={styles.rollingDetailsToggle}>
                 <summary>Registrar salida</summary>
-                <RollingCloseForm id={record.id} enteredOn={record.receivedOn ?? record.enteredOn} inputWeight={Number(record.inputWeight)} today={today} />
+                <RollingCloseForm id={record.id} enteredOn={record.enteredOn} inputWeight={Number(record.inputWeight)} today={today} />
               </details>
             )}
           </article>
