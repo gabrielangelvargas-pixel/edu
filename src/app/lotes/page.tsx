@@ -13,11 +13,11 @@ export default async function LotsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const { lots, models, operators, source, databaseMessage } = await getDashboardData({ allLots: true });
+  const { lots, models, source, databaseMessage } = await getDashboardData({ allLots: true });
   return (
     <>
       <AppNavigation user={user} current="lots" dateLabel={getWorkshopDateLabel()} databaseConnected={source === "mysql"} />
-      <LotsView data={{ lots, models, operators, databaseMessage }} today={getWorkshopDate()} />
+      <LotsView data={{ lots, models, databaseMessage }} today={getWorkshopDate()} />
     </>
   );
 }

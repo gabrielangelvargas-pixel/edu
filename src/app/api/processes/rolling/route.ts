@@ -1,4 +1,4 @@
-import type { RowDataPacket } from "mysql2";
+import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { getPool } from "@/lib/db";
@@ -7,6 +7,43 @@ import { toMilligrams } from "@/lib/weights";
 import { getWorkshopDate } from "@/lib/workshop-date";
 
 const weight = z.number().min(0).max(999999).refine((value) => toMilligrams(value) / 1000 === value);
+const startSchema = z.object({
+  processId: z.string().regex(/^[1-9]\d{0,19}$/),
+  operatorId: z.string().regex(/^[1-9]\d{0,19}$/),
+  enteredOn: z.iso.date(),
+});
+
+export async function POST(request: Request) {
+  if (!await getCurrentUser()) {
+    return Response.json({ error: "No autorizado." }, { status: 401 });
+  }
+  const parsed = startSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success || parsed.data.enteredOn > getWorkshopDate()) {
+    return Response.json({ error: "Seleccioná un operario y una fecha de entrada válida." }, { status: 400 });
+  }
+  const { processId, operatorId, enteredOn } = parsed.data;
+
+  try {
+    const [result] = await getPool().execute<ResultSetHeader>(`
+      UPDATE lot_processes lp
+      JOIN lots l ON l.id = lp.lot_id AND l.current_process_id = lp.process_id
+      JOIN processes p ON p.id = lp.process_id AND p.slug = ? AND p.is_active = TRUE
+      JOIN operators o ON o.id = ? AND o.is_active = TRUE
+      SET lp.status = 'En proceso', lp.operator_id = o.id, lp.started_at = ?,
+          lp.input_weight = l.current_weight, l.status = 'En proceso', l.assigned_operator_id = o.id
+      WHERE lp.id = ? AND lp.status = 'Pendiente' AND lp.started_at IS NULL
+        AND l.status = 'Pendiente' AND DATE(l.entered_at) <= ?
+    `, [rollingSlug, operatorId, `${enteredOn} 00:00:00`, processId, enteredOn]);
+    if (!result.affectedRows) {
+      return Response.json({ error: "Verificá que el lote siga pendiente, el operario esté activo y la entrada sea igual o posterior al alta." }, { status: 409 });
+    }
+    return Response.json({ ok: true });
+  } catch (error) {
+    console.error("No se pudo iniciar el proceso:", error);
+    return Response.json({ error: "No se pudo iniciar la etapa. Intentá nuevamente." }, { status: 500 });
+  }
+}
+
 const closureSchema = z.object({
   processId: z.string().regex(/^[1-9]\d{0,19}$/),
   finishedOn: z.iso.date(),

@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { AppNavigation } from "@/components/app-navigation";
 import { RollingCloseForm } from "@/components/rolling-close-form";
+import { RollingStartForm } from "@/components/rolling-start-form";
 import styles from "@/components/dashboard.module.css";
 import { getCurrentUser } from "@/lib/auth";
-import { getRollingRecords } from "@/lib/rolling";
+import { getRollingOperators, getRollingRecords } from "@/lib/rolling";
 import { formatGrams, toMilligrams } from "@/lib/weights";
 import { getWorkshopDate, getWorkshopDateLabel } from "@/lib/workshop-date";
 
@@ -20,10 +21,11 @@ export default async function RollingPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const records = await getRollingRecords().catch((error: unknown) => {
+  const data = await Promise.all([getRollingRecords(), getRollingOperators()]).catch((error: unknown) => {
     console.error("No se pudieron consultar los registros de laminación y trefilación:", error);
     return null;
   });
+  const [records, operators] = data ?? [null, []];
   const today = getWorkshopDate();
 
   return (
@@ -31,7 +33,7 @@ export default async function RollingPage() {
       <AppNavigation user={user} current="rolling" dateLabel={getWorkshopDateLabel()} databaseConnected={records !== null} />
       <main className={styles.content}>
         <div className={styles.topActions}>
-          <Link className={styles.primaryButton} href="/lotes#nuevo-lote">Registrar entrada desde Lotes</Link>
+          <Link className={styles.primaryButton} href="/lotes#nuevo-lote">Ir a Lotes</Link>
         </div>
         {records === null && <p className={styles.warning}>No se pudieron consultar los registros. Intentá recargar la página.</p>}
         {records?.length === 0 && <p className={styles.empty}>Todavía no hay registros de esta etapa.</p>}
@@ -42,8 +44,8 @@ export default async function RollingPage() {
               <span className={styles.processPill}>{record.status === "Terminado" ? "Finalizado" : record.status}</span>
             </div>
             <dl className={styles.rollingDetails}>
-              <div><dt>Fecha de entrada</dt><dd>{shortDate(record.enteredOn)}</dd></div>
-              <div><dt>Lingote de entrada</dt><dd>{formatGrams(Number(record.inputWeight))} g</dd></div>
+              <div><dt>{record.enteredOn ? "Fecha de entrada" : "Fecha de alta del lote"}</dt><dd>{shortDate(record.enteredOn ?? record.lotDate)}</dd></div>
+              <div><dt>{record.inputWeight === null ? "Lingote disponible" : "Lingote de entrada"}</dt><dd>{formatGrams(Number(record.inputWeight ?? record.availableWeight))} g</dd></div>
               <div><dt>Operario</dt><dd>{record.operator || "Sin asignar"}</dd></div>
               {record.finishedOn && (
                 <>
@@ -58,7 +60,13 @@ export default async function RollingPage() {
                 </>
               )}
             </dl>
-            {record.status === "En proceso" && (
+            {record.status === "Pendiente" && !record.enteredOn && (
+              <details className={styles.rollingDetailsToggle}>
+                <summary>Enviar a proceso</summary>
+                <RollingStartForm id={record.id} lotDate={record.lotDate} today={today} operators={operators} />
+              </details>
+            )}
+            {record.status === "En proceso" && record.enteredOn && (
               <details className={styles.rollingDetailsToggle}>
                 <summary>Registrar salida</summary>
                 <RollingCloseForm id={record.id} enteredOn={record.enteredOn} inputWeight={Number(record.inputWeight)} today={today} />

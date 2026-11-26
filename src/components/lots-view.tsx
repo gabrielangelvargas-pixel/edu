@@ -6,7 +6,7 @@ import type { DashboardData, Priority } from "@/types/domain";
 import { LotsTable } from "./lots-table";
 import styles from "./dashboard.module.css";
 
-type LotsData = Pick<DashboardData, "lots" | "models" | "operators" | "databaseMessage">;
+type LotsData = Pick<DashboardData, "lots" | "models" | "databaseMessage">;
 
 export function LotsView({ data, today }: { data: LotsData; today: string }) {
   const [query, setQuery] = useState("");
@@ -47,9 +47,9 @@ function NewLotModal({ data, today, onClose }: { data: LotsData; today: string; 
     event.preventDefault(); setSubmitting(true); setError("");
     const form = new FormData(event.currentTarget);
     const payload = {
-      modelId: String(form.get("modelId")), operatorId: String(form.get("operatorId")),
+      modelId: String(form.get("modelId")),
       initialWeight: Number(form.get("initialWeight")), enteredOn: String(form.get("enteredOn")),
-      priority: String(form.get("priority")) as Priority, dueAt: String(form.get("dueAt")),
+      priority: String(form.get("priority")) as Priority,
     };
     try {
       const response = await fetch("/api/lots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -62,15 +62,13 @@ function NewLotModal({ data, today, onClose }: { data: LotsData; today: string; 
   return (
     <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}>
       <div className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="new-lot-title">
-        <div className={styles.modalHeader}><div><h2 id="new-lot-title">Crear lote de producción</h2><p>Registra la entrada a Laminación y trefilación. El código de 8 dígitos se asigna al guardar.</p></div><button onClick={onClose} aria-label="Cerrar"><X size={21} /></button></div>
+        <div className={styles.modalHeader}><div><h2 id="new-lot-title">Crear lote de producción</h2><p>El código de 8 dígitos se asigna al guardar. El lote queda pendiente de envío a producción.</p></div><button onClick={onClose} aria-label="Cerrar"><X size={21} /></button></div>
         <form onSubmit={submit}>
           <div className={styles.formGrid}>
-            <label><span>Fecha de entrada</span><input name="enteredOn" type="date" defaultValue={today} max={today} required /></label>
+            <label><span>Fecha de alta del lote</span><input name="enteredOn" type="date" defaultValue={today} max={today} required /></label>
             <label><span>Modelo de cadena</span><select name="modelId" required>{data.models.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
             <label><span>Peso de entrada del lingote (g)</span><input name="initialWeight" type="number" min="0.001" max="999999" step="0.001" required /></label>
-            <label><span>Operario de la etapa</span><select name="operatorId" defaultValue="" required><option value="" disabled>Seleccioná un operario</option>{data.operators.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
             <label><span>Prioridad</span><select name="priority" defaultValue="Normal"><option>Normal</option><option>Alta</option><option>Urgente</option></select></label>
-            <label><span>Fecha de entrega</span><input name="dueAt" type="date" required /></label>
           </div>
           {error && <p className={styles.formError}><AlertTriangle size={16} />{error}</p>}
           <div className={styles.modalActions}><button type="button" onClick={onClose}>Cancelar</button><button className={styles.primaryButton} disabled={submitting}>{submitting ? "Guardando..." : "Crear lote"}</button></div>

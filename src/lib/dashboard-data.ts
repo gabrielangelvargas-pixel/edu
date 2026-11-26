@@ -9,7 +9,7 @@ type OptionRow = RowDataPacket & { id: number; name: string };
 type LotRow = RowDataPacket & {
   id: number; code: string; model: string; model_id: number; process: string; process_id: number;
   operator: string | null; initial_weight: number; current_weight: number; progress: number;
-  status: LotSummary["status"]; priority: LotSummary["priority"]; entered_at: Date; due_at: Date;
+  status: LotSummary["status"]; priority: LotSummary["priority"]; entered_at: Date; due_at: Date | null;
 };
 
 const emptyDashboard: DashboardData = {
@@ -36,6 +36,7 @@ export async function getDashboardData({ allLots = false } = {}): Promise<Dashbo
         SELECT p.id, p.name, p.accent, COUNT(l.id) AS active_lots
         FROM processes p
         LEFT JOIN lots l ON l.current_process_id = p.id AND l.status <> 'Terminado'
+          AND (p.slug <> 'laminacion-trefilacion' OR l.status <> 'Pendiente')
           AND NOT EXISTS (
             SELECT 1 FROM lot_processes lp
             WHERE lp.lot_id = l.id AND lp.process_id = p.id AND lp.status = 'Terminado'
@@ -60,7 +61,7 @@ export async function getDashboardData({ allLots = false } = {}): Promise<Dashbo
         id: String(row.id), code: row.code, model: row.model, modelId: String(row.model_id), process: row.process,
         processId: String(row.process_id), operator: row.operator ?? "Sin asignar", initialWeight: Number(row.initial_weight),
         currentWeight: Number(row.current_weight), progress: Number(row.progress), status: row.status, priority: row.priority,
-        enteredAt: row.entered_at.toISOString(), dueAt: row.due_at.toISOString().slice(0, 10),
+        enteredAt: row.entered_at.toISOString(), dueAt: row.due_at?.toISOString().slice(0, 10) ?? null,
       })),
     };
   } catch (error) {

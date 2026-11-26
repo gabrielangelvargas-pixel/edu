@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS lots (
   status ENUM('Pendiente','En proceso','Observado','Terminado') NOT NULL DEFAULT 'Pendiente',
   priority ENUM('Normal','Alta','Urgente') NOT NULL DEFAULT 'Normal',
   entered_at DATETIME NOT NULL,
-  due_at DATE NOT NULL,
+  due_at DATE NULL DEFAULT NULL,
   completed_at DATETIME NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

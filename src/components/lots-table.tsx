@@ -28,7 +28,7 @@ function LotRow({ lot }: { lot: LotSummary }) {
       <td>{lot.operator}</td>
       <td><strong>{formatWeight(lot.currentWeight)} g</strong><small className={styles.cellSub}>de {formatWeight(lot.initialWeight)} g</small></td>
       <td><div className={styles.progressLabel}><span>{lot.progress}%</span><small>{lot.status}</small></div><div className={styles.progress}><i style={{ width: `${lot.progress}%` }} /></div></td>
-      <td><strong>{formatDate(lot.dueAt)}</strong><small className={styles.cellSub}>Programada</small></td>
+      <td>{lot.dueAt ? <><strong>{formatDate(lot.dueAt)}</strong><small className={styles.cellSub}>Programada</small></> : "Sin programar"}</td>
     </tr>
   );
 }

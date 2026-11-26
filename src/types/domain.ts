@@ -15,7 +15,7 @@ export type LotSummary = {
   status: LotStatus;
   priority: Priority;
   enteredAt: string;
-  dueAt: string;
+  dueAt: string | null;
 };
 
 export type ProcessSummary = { id: string; name: string; activeLots: number; accent: string };
