@@ -27,7 +27,7 @@ export function RollingStartForm({ id, lotDate, today, currentTime, operators, a
         method: assignment ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          processId: id, operatorId: form.get("operatorId"),
+          ...(assignment ? { processId: id } : { lotId: id }), operatorId: form.get("operatorId"),
           enteredOn: form.get("enteredOn"), enteredTime: form.get("enteredTime") || null,
         }),
       });

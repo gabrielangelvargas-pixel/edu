@@ -2,7 +2,7 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { getPool } from "@/lib/db";
-import { ensureRollingSetup, rollingSlug } from "@/lib/rolling";
+import { ensureRollingSetup } from "@/lib/rolling";
 import { toMilligrams } from "@/lib/weights";
 import { getWorkshopDate } from "@/lib/workshop-date";
 
@@ -32,17 +32,15 @@ export async function POST(request: Request) {
     const connection = await getPool().getConnection();
     try {
       await connection.beginTransaction();
-      const [rows] = await connection.execute<(RowDataPacket & { processId: number })[]>(`
-        SELECT p.id AS processId FROM processes p
-        JOIN chain_models m ON m.id = ? AND m.is_active = TRUE
-        WHERE p.slug = ? AND p.is_active = TRUE
-      `, [input.modelId, rollingSlug]);
+      const [rows] = await connection.execute<RowDataPacket[]>(
+        "SELECT id FROM chain_models WHERE id = ? AND is_active = TRUE", [input.modelId],
+      );
       if (!rows[0]) {
         await connection.rollback();
-        return Response.json({ error: "Verificá que el modelo y el proceso estén activos." }, { status: 409 });
+        return Response.json({ error: "Verificá que el modelo esté activo." }, { status: 409 });
       }
 
-      // Lock the day's counter until both the lot and its first process are saved.
+      // Lock the day's counter until the lot is saved.
       await connection.execute(`
         INSERT INTO lot_daily_sequences (entry_date) VALUES (?)
         ON DUPLICATE KEY UPDATE last_number = last_number
@@ -61,14 +59,11 @@ export async function POST(request: Request) {
       await connection.execute("UPDATE lot_daily_sequences SET last_number = ? WHERE entry_date = ?", [next, input.enteredOn]);
 
       const [result] = await connection.execute<ResultSetHeader>(`
-        INSERT INTO lots (code, model_id, current_process_id, initial_weight,
+        INSERT INTO lots (code, model_id, initial_weight,
           current_weight, status, priority, entered_at)
-        VALUES (?, ?, ?, ?, ?, 'Pendiente', ?, ?)
-      `, [code, input.modelId, rows[0].processId, input.initialWeight,
+        VALUES (?, ?, ?, ?, 'Pendiente', ?, ?)
+      `, [code, input.modelId, input.initialWeight,
         input.initialWeight, input.priority, enteredAt]);
-      await connection.execute(`
-        INSERT INTO lot_processes (lot_id, process_id, status) VALUES (?, ?, 'Pendiente')
-      `, [result.insertId, rows[0].processId]);
       await connection.commit();
       return Response.json({ id: result.insertId, code }, { status: 201 });
     } catch (error) {

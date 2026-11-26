@@ -41,10 +41,10 @@ export default async function RollingPage() {
         {records === null && <p className={styles.warning}>No se pudieron consultar los registros. Intentá recargar la página.</p>}
         {records?.length === 0 && <p className={styles.empty}>Todavía no hay registros de esta etapa.</p>}
         {records?.map((record) => (
-          <article key={record.id} className={styles.panel}>
+          <article key={record.id ? `process-${record.id}` : `lot-${record.lotId}`} className={styles.panel}>
             <div className={styles.panelHeader}>
               <h2>Lote {record.code} · {record.model}</h2>
-              <span className={styles.processPill}>{record.status === "Terminado" ? "Finalizado" : record.status}</span>
+              <span className={styles.processPill}>{record.id === null ? "Sin proceso" : record.status === "Terminado" ? "Finalizado" : record.status}</span>
             </div>
             <dl className={styles.rollingDetails}>
               <div>
@@ -68,13 +68,13 @@ export default async function RollingPage() {
                 </>
               )}
             </dl>
-            {record.status === "Pendiente" && !record.enteredOn && (
+            {record.id === null && (
               <details className={styles.rollingDetailsToggle}>
                 <summary>Enviar a proceso</summary>
-                <RollingStartForm id={record.id} lotDate={record.lotDate} today={today} currentTime={currentTime} operators={operators} />
+                <RollingStartForm id={record.lotId} lotDate={record.lotDate} today={today} currentTime={currentTime} operators={operators} />
               </details>
             )}
-            {canEditAssignment && record.enteredOn && (
+            {canEditAssignment && record.id && record.enteredOn && (
               <details className={styles.rollingDetailsToggle}>
                 <summary>Editar entrada y operario</summary>
                 <RollingStartForm
@@ -87,7 +87,7 @@ export default async function RollingPage() {
                 />
               </details>
             )}
-            {record.status === "En proceso" && record.enteredOn && (
+            {record.status === "En proceso" && record.id && record.enteredOn && (
               <details className={styles.rollingDetailsToggle}>
                 <summary>Registrar salida</summary>
                 <RollingCloseForm id={record.id} enteredOn={record.enteredOn} inputWeight={Number(record.inputWeight)} today={today} />

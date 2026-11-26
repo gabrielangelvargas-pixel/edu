@@ -7,7 +7,7 @@ export type LotSummary = {
   model: string;
   modelId: string;
   process: string;
-  processId: string;
+  processId: string | null;
   operator: string;
   initialWeight: number;
   currentWeight: number;
