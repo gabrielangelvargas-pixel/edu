@@ -2,18 +2,18 @@
 
 import { Activity, Boxes, LayoutDashboard, LogOut, Menu, Users, X } from "lucide-react";
 import Link from "next/link";
-import { useRef, type ReactNode } from "react";
+import { useRef } from "react";
 import type { AuthUser } from "@/types/auth";
 import styles from "./app-navigation.module.css";
 
 const roleLabels = { admin: "Administrador", supervisor: "Supervisor", operator: "Operario" };
 
-export function AppNavigation({ user, current, title, subtitle, children }: {
+const screenTitles = { summary: "Resumen", lots: "Lotes", users: "Usuarios" };
+
+export function AppNavigation({ user, current, dateLabel }: {
   user: Pick<AuthUser, "displayName" | "role">;
-  current: "summary" | "users";
-  title: string;
-  subtitle?: string;
-  children?: ReactNode;
+  current: keyof typeof screenTitles;
+  dateLabel: string;
 }) {
   const drawer = useRef<HTMLDialogElement>(null);
   const initials = user.displayName.trim().split(/\s+/).slice(0, 2)
@@ -27,11 +27,8 @@ export function AppNavigation({ user, current, title, subtitle, children }: {
           aria-haspopup="dialog" aria-controls="cadena-menu" onClick={() => drawer.current?.showModal()}>
           <Menu size={22} aria-hidden="true" />
         </button>
-        <div className={styles.heading}>
-          {subtitle && <p>{subtitle}</p>}
-          <strong>{title}</strong>
-        </div>
-        {children && <div className={styles.actions}>{children}</div>}
+        <strong className={styles.heading}>{screenTitles[current]}</strong>
+        <p className={styles.date}>{dateLabel}</p>
       </header>
       <dialog ref={drawer} id="cadena-menu" className={styles.drawer}
         aria-labelledby="cadena-menu-title"
@@ -47,7 +44,9 @@ export function AppNavigation({ user, current, title, subtitle, children }: {
             <Link href="/" aria-current={current === "summary" ? "page" : undefined} onClick={close}>
               <LayoutDashboard size={18} aria-hidden="true" />Resumen
             </Link>
-            <Link href="/#lotes" onClick={close}><Boxes size={18} aria-hidden="true" />Lotes</Link>
+            <Link href="/lotes" aria-current={current === "lots" ? "page" : undefined} onClick={close}>
+              <Boxes size={18} aria-hidden="true" />Lotes
+            </Link>
             <Link href="/#procesos" onClick={close}><Activity size={18} aria-hidden="true" />Procesos</Link>
             {user.role === "admin" && (
               <>

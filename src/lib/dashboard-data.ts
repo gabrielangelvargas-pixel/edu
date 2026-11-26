@@ -21,7 +21,7 @@ const emptyDashboard: DashboardData = {
   lots: [],
 };
 
-export async function getDashboardData(): Promise<DashboardData> {
+export async function getDashboardData({ allLots = false } = {}): Promise<DashboardData> {
   if (!isDatabaseConfigured()) {
     return {
       ...emptyDashboard,
@@ -35,7 +35,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       pool.query<ProcessRow[]>(`SELECT p.id, p.name, p.accent, COUNT(l.id) AS active_lots FROM processes p LEFT JOIN lots l ON l.current_process_id = p.id AND l.status <> 'Terminado' WHERE p.is_active = 1 GROUP BY p.id ORDER BY p.display_order`),
       pool.query<OptionRow[]>("SELECT id, name FROM chain_models WHERE is_active = 1 ORDER BY name"),
       pool.query<OptionRow[]>("SELECT id, name FROM operators WHERE is_active = 1 ORDER BY name"),
-      pool.query<LotRow[]>(`SELECT l.id, l.code, cm.name AS model, cm.id AS model_id, p.name AS process, p.id AS process_id, o.name AS operator, l.initial_weight, l.current_weight, l.progress, l.status, l.priority, l.entered_at, l.due_at FROM lots l JOIN chain_models cm ON cm.id = l.model_id JOIN processes p ON p.id = l.current_process_id LEFT JOIN operators o ON o.id = l.assigned_operator_id ORDER BY l.created_at DESC LIMIT 20`),
+      pool.query<LotRow[]>(`SELECT l.id, l.code, cm.name AS model, cm.id AS model_id, p.name AS process, p.id AS process_id, o.name AS operator, l.initial_weight, l.current_weight, l.progress, l.status, l.priority, l.entered_at, l.due_at FROM lots l JOIN chain_models cm ON cm.id = l.model_id JOIN processes p ON p.id = l.current_process_id LEFT JOIN operators o ON o.id = l.assigned_operator_id ORDER BY l.created_at DESC, l.id DESC${allLots ? "" : " LIMIT 20"}`),
       pool.query<RowDataPacket[]>(`SELECT SUM(status <> 'Terminado') AS active_lots, COALESCE(SUM(CASE WHEN status <> 'Terminado' THEN current_weight ELSE 0 END), 0) AS total_weight, SUM(status = 'Terminado' AND DATE(completed_at) = CURRENT_DATE()) AS completed_today, COALESCE(AVG(CASE WHEN status = 'Terminado' THEN current_weight / NULLIF(initial_weight, 0) * 100 END), 0) AS average_yield FROM lots`),
     ]);
     const metrics = metricRows[0] ?? {};
