@@ -56,6 +56,11 @@ CREATE TABLE IF NOT EXISTS operators (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS lot_daily_sequences (
+  entry_date DATE PRIMARY KEY,
+  last_number TINYINT UNSIGNED NOT NULL DEFAULT 0
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS lots (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   code VARCHAR(30) NOT NULL UNIQUE,
@@ -123,3 +128,6 @@ INSERT IGNORE INTO operators (id, code, name) VALUES
 
 INSERT IGNORE INTO model_processes (model_id, process_id, step_order, tolerance_percent)
 SELECT m.id, p.id, p.display_order, 2.00 FROM chain_models m CROSS JOIN processes p;
+
+INSERT IGNORE INTO processes (name, slug, display_order, accent)
+VALUES ('Laminación y trefilación', 'laminacion-trefilacion', 0, '#3f8067');

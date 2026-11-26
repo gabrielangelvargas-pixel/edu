@@ -12,7 +12,7 @@ export function Dashboard({ data }: { data: DashboardData }) {
       {data.databaseMessage && <div className={styles.warning}><AlertTriangle size={17} />{data.databaseMessage}</div>}
 
       <section className={styles.stats} aria-label="Indicadores">
-        <Metric icon={<Boxes size={20} />} label="Lotes activos" value={String(data.stats.activeLots)} detail="En 5 procesos" />
+        <Metric icon={<Boxes size={20} />} label="Lotes activos" value={String(data.stats.activeLots)} detail="Pendientes o en curso" />
         <Metric icon={<Weight size={20} />} label="Metal en proceso" value={`${formatWeight(data.stats.totalWeight)} g`} detail="Peso actual registrado" />
         <Metric icon={<CheckCircle2 size={20} />} label="Finalizados hoy" value={String(data.stats.completedToday)} detail="Listos para entrega" />
         <Metric icon={<CircleGauge size={20} />} label="Rendimiento medio" value={`${data.stats.averageYield.toFixed(1)}%`} detail="Sobre lotes terminados" highlight />

@@ -8,7 +8,7 @@ import styles from "./dashboard.module.css";
 
 type LotsData = Pick<DashboardData, "lots" | "models" | "operators" | "databaseMessage">;
 
-export function LotsView({ data }: { data: LotsData }) {
+export function LotsView({ data, today }: { data: LotsData; today: string }) {
   const [query, setQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const search = query.trim().toLocaleLowerCase("es");
@@ -24,7 +24,7 @@ export function LotsView({ data }: { data: LotsData }) {
           <input type="search" aria-label="Buscar lote" value={query}
             onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lote..." />
         </label>
-        <button type="button" className={styles.primaryButton} disabled={Boolean(data.databaseMessage)}
+        <button id="nuevo-lote" type="button" className={styles.primaryButton} disabled={Boolean(data.databaseMessage)}
           onClick={() => setModalOpen(true)}><PackagePlus size={18} aria-hidden="true" />Nuevo lote</button>
       </div>
       {data.databaseMessage ? (
@@ -34,24 +34,23 @@ export function LotsView({ data }: { data: LotsData }) {
           <LotsTable lots={filteredLots} emptyMessage={search ? "No encontramos lotes para esa búsqueda." : undefined} />
         </section>
       )}
-      {modalOpen && <NewLotModal data={data} onClose={() => setModalOpen(false)} />}
+      {modalOpen && <NewLotModal data={data} today={today} onClose={() => setModalOpen(false)} />}
     </main>
   );
 }
 
-function NewLotModal({ data, onClose }: { data: LotsData; onClose: () => void }) {
-  const lastNumber = data.lots.reduce((max, lot) => {
-    const match = /^LT-(\d{1,12})$/i.exec(lot.code);
-    return match ? Math.max(max, Number(match[1])) : max;
-  }, 264);
-  const nextCode = `LT-${String(lastNumber + 1).padStart(4, "0")}`;
+function NewLotModal({ data, today, onClose }: { data: LotsData; today: string; onClose: () => void }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setSubmitting(true); setError("");
     const form = new FormData(event.currentTarget);
-    const payload = { code: String(form.get("code")), modelId: String(form.get("modelId")), operatorId: String(form.get("operatorId")) || undefined, initialWeight: Number(form.get("initialWeight")), priority: String(form.get("priority")) as Priority, dueAt: String(form.get("dueAt")) };
+    const payload = {
+      modelId: String(form.get("modelId")), operatorId: String(form.get("operatorId")),
+      initialWeight: Number(form.get("initialWeight")), enteredOn: String(form.get("enteredOn")),
+      priority: String(form.get("priority")) as Priority, dueAt: String(form.get("dueAt")),
+    };
     try {
       const response = await fetch("/api/lots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const result = await response.json();
@@ -63,13 +62,13 @@ function NewLotModal({ data, onClose }: { data: LotsData; onClose: () => void })
   return (
     <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}>
       <div className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="new-lot-title">
-        <div className={styles.modalHeader}><div><span className={styles.eyebrow}>NUEVO REGISTRO</span><h2 id="new-lot-title">Crear lote de producción</h2><p>Podrás completar pesos y movimientos durante cada proceso.</p></div><button onClick={onClose} aria-label="Cerrar"><X size={21} /></button></div>
+        <div className={styles.modalHeader}><div><h2 id="new-lot-title">Crear lote de producción</h2><p>Registra la entrada a Laminación y trefilación. El código de 8 dígitos se asigna al guardar.</p></div><button onClick={onClose} aria-label="Cerrar"><X size={21} /></button></div>
         <form onSubmit={submit}>
           <div className={styles.formGrid}>
-            <label><span>Código del lote</span><input name="code" defaultValue={nextCode} required /></label>
+            <label><span>Fecha de entrada</span><input name="enteredOn" type="date" defaultValue={today} max={today} required /></label>
             <label><span>Modelo de cadena</span><select name="modelId" required>{data.models.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
-            <label><span>Peso inicial (gramos)</span><input name="initialWeight" type="number" min="0.01" step="0.01" placeholder="0,00" required /></label>
-            <label><span>Operador inicial</span><select name="operatorId" defaultValue=""><option value="">Sin asignar</option>{data.operators.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
+            <label><span>Peso de entrada del lingote (g)</span><input name="initialWeight" type="number" min="0.001" max="999999" step="0.001" required /></label>
+            <label><span>Operario de la etapa</span><select name="operatorId" defaultValue="" required><option value="" disabled>Seleccioná un operario</option>{data.operators.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
             <label><span>Prioridad</span><select name="priority" defaultValue="Normal"><option>Normal</option><option>Alta</option><option>Urgente</option></select></label>
             <label><span>Fecha de entrega</span><input name="dueAt" type="date" required /></label>
           </div>

@@ -8,7 +8,7 @@ import styles from "./app-navigation.module.css";
 
 const roleLabels = { admin: "Administrador", supervisor: "Supervisor", operator: "Operario" };
 
-const screenTitles = { summary: "Resumen", lots: "Lotes", users: "Usuarios" };
+const screenTitles = { summary: "Resumen", lots: "Lotes", rolling: "Laminación y trefilación", users: "Usuarios" };
 
 export function AppNavigation({ user, current, dateLabel, databaseConnected }: {
   user: Pick<AuthUser, "displayName" | "role">;
@@ -48,7 +48,10 @@ export function AppNavigation({ user, current, dateLabel, databaseConnected }: {
             <Link href="/lotes" aria-current={current === "lots" ? "page" : undefined} onClick={close}>
               <Boxes size={18} aria-hidden="true" />Lotes
             </Link>
-            <Link href="/#procesos" onClick={close}><Activity size={18} aria-hidden="true" />Procesos</Link>
+            <p>PROCESOS</p>
+            <Link href="/procesos/laminacion-trefilacion" aria-current={current === "rolling" ? "page" : undefined} onClick={close}>
+              <Activity size={18} aria-hidden="true" />Laminación y trefilación
+            </Link>
             {user.role === "admin" && (
               <>
                 <p>ADMINISTRACIÓN</p>

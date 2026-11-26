@@ -4,7 +4,7 @@ import { AppNavigation } from "@/components/app-navigation";
 import { LotsView } from "@/components/lots-view";
 import { getCurrentUser } from "@/lib/auth";
 import { getDashboardData } from "@/lib/dashboard-data";
-import { getWorkshopDateLabel } from "@/lib/workshop-date";
+import { getWorkshopDate, getWorkshopDateLabel } from "@/lib/workshop-date";
 
 export const instant = false;
 
@@ -17,7 +17,7 @@ export default async function LotsPage() {
   return (
     <>
       <AppNavigation user={user} current="lots" dateLabel={getWorkshopDateLabel()} databaseConnected={source === "mysql"} />
-      <LotsView data={{ lots, models, operators, databaseMessage }} />
+      <LotsView data={{ lots, models, operators, databaseMessage }} today={getWorkshopDate()} />
     </>
   );
 }

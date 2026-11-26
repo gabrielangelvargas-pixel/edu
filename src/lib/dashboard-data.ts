@@ -32,7 +32,16 @@ export async function getDashboardData({ allLots = false } = {}): Promise<Dashbo
   try {
     const pool = getPool();
     const [[processRows], [modelRows], [operatorRows], [lotRows], [metricRows]] = await Promise.all([
-      pool.query<ProcessRow[]>(`SELECT p.id, p.name, p.accent, COUNT(l.id) AS active_lots FROM processes p LEFT JOIN lots l ON l.current_process_id = p.id AND l.status <> 'Terminado' WHERE p.is_active = 1 GROUP BY p.id ORDER BY p.display_order`),
+      pool.query<ProcessRow[]>(`
+        SELECT p.id, p.name, p.accent, COUNT(l.id) AS active_lots
+        FROM processes p
+        LEFT JOIN lots l ON l.current_process_id = p.id AND l.status <> 'Terminado'
+          AND NOT EXISTS (
+            SELECT 1 FROM lot_processes lp
+            WHERE lp.lot_id = l.id AND lp.process_id = p.id AND lp.status = 'Terminado'
+          )
+        WHERE p.is_active = 1 GROUP BY p.id ORDER BY p.display_order
+      `),
       pool.query<OptionRow[]>("SELECT id, name FROM chain_models WHERE is_active = 1 ORDER BY name"),
       pool.query<OptionRow[]>("SELECT id, name FROM operators WHERE is_active = 1 ORDER BY name"),
       pool.query<LotRow[]>(`SELECT l.id, l.code, cm.name AS model, cm.id AS model_id, p.name AS process, p.id AS process_id, o.name AS operator, l.initial_weight, l.current_weight, l.progress, l.status, l.priority, l.entered_at, l.due_at FROM lots l JOIN chain_models cm ON cm.id = l.model_id JOIN processes p ON p.id = l.current_process_id LEFT JOIN operators o ON o.id = l.assigned_operator_id ORDER BY l.created_at DESC, l.id DESC${allLots ? "" : " LIMIT 20"}`),
