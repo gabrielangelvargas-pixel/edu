@@ -29,6 +29,8 @@ Al primer acceso, la aplicación crea las tablas de autenticación y el usuario 
 
 La contraseña se guarda como hash, nunca como texto plano. Las credenciales iniciales pueden personalizarse con `INITIAL_ADMIN_USERNAME` e `INITIAL_ADMIN_PASSWORD` antes del primer inicio.
 
+Los demás usuarios pueden registrarse desde `/register`. Las cuentas nuevas se crean inactivas y sin rol; un administrador debe asignarles un perfil y activarlas desde **Administración → Usuarios**.
+
 ## Despliegue en Hostinger
 
 - Framework: Next.js
@@ -47,6 +49,7 @@ Agregar en Hostinger las variables `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD
 - Búsqueda de lotes.
 - Alta básica de lotes.
 - Login con usuario y contraseña, sesión segura y rutas protegidas.
+- Registro con aprobación administrativa y perfiles Administrador, Supervisor y Operario.
 - Persistencia MySQL al configurar el entorno.
 - Esquema flexible para modelos, rutas, procesos, operadores, pesos, recortes y desperdicios.
 

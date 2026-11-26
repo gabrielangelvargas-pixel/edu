@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/login-form";
@@ -18,6 +19,7 @@ export default async function LoginPage() {
         <h1>Bienvenido a Cadena</h1>
         <p>Ingresá con tus credenciales para acceder al seguimiento del taller.</p>
         <LoginForm />
+        <p className={styles.authLink}>¿Todavía no tenés acceso? <Link href="/register">Crear una cuenta</Link></p>
       </section>
       <p className={styles.footer}>Cadena · Gestión de procesos y lotes</p>
     </main>

@@ -4,24 +4,20 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypt
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { cookies } from "next/headers";
 import { getPool } from "@/lib/db";
+import type { AuthRole, AuthUser, ManagedUser } from "@/types/auth";
 
 const SESSION_COOKIE = "cadena_session";
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 7;
 const SCRYPT_KEY_LENGTH = 64;
-
-export type AuthUser = {
-  id: string;
-  username: string;
-  displayName: string;
-  role: "admin" | "operator";
-};
 
 type UserRow = RowDataPacket & {
   id: number;
   username: string;
   display_name: string;
   password_hash: string;
-  role: AuthUser["role"];
+  role: AuthRole | null;
+  is_active?: number;
+  created_at?: Date;
 };
 
 let schemaPromise: Promise<void> | undefined;
@@ -46,6 +42,7 @@ function hashSessionToken(token: string) {
 }
 
 function toAuthUser(row: UserRow): AuthUser {
+  if (!row.role) throw new Error("El usuario activo no tiene un rol asignado.");
   return {
     id: String(row.id),
     username: row.username,
@@ -63,11 +60,17 @@ async function initializeAuthSchema() {
       username VARCHAR(80) NOT NULL UNIQUE,
       display_name VARCHAR(120) NOT NULL,
       password_hash VARCHAR(255) NOT NULL,
-      role ENUM('admin','operator') NOT NULL DEFAULT 'operator',
-      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      role ENUM('admin','supervisor','operator') NULL DEFAULT NULL,
+      is_active BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+      MODIFY role ENUM('admin','supervisor','operator') NULL DEFAULT NULL,
+      MODIFY is_active BOOLEAN NOT NULL DEFAULT FALSE
   `);
 
   await pool.query(`
@@ -90,7 +93,7 @@ async function initializeAuthSchema() {
 
   if (existing.length === 0) {
     await pool.execute<ResultSetHeader>(
-      "INSERT IGNORE INTO users (username, display_name, password_hash, role) VALUES (?, 'Administrador', ?, 'admin')",
+      "INSERT IGNORE INTO users (username, display_name, password_hash, role, is_active) VALUES (?, 'Administrador', ?, 'admin', TRUE)",
       [initialUsername, hashPassword(initialPassword)],
     );
   }
@@ -107,12 +110,53 @@ export function ensureAuthSchema() {
 export async function authenticateUser(username: string, password: string) {
   await ensureAuthSchema();
   const [rows] = await getPool().execute<UserRow[]>(
-    "SELECT id, username, display_name, password_hash, role FROM users WHERE username = ? AND is_active = TRUE LIMIT 1",
+    "SELECT id, username, display_name, password_hash, role, is_active FROM users WHERE username = ? LIMIT 1",
     [username],
   );
   const user = rows[0];
-  if (!user || !verifyPassword(password, user.password_hash)) return null;
-  return toAuthUser(user);
+  if (!user || !verifyPassword(password, user.password_hash)) return { status: "invalid" as const };
+  if (!user.is_active || !user.role) return { status: "pending" as const };
+  return { status: "active" as const, user: toAuthUser(user) };
+}
+
+export async function registerUser(input: { username: string; displayName: string; password: string }) {
+  await ensureAuthSchema();
+  try {
+    await getPool().execute<ResultSetHeader>(
+      "INSERT INTO users (username, display_name, password_hash, role, is_active) VALUES (?, ?, ?, NULL, FALSE)",
+      [input.username, input.displayName, hashPassword(input.password)],
+    );
+    return { created: true as const };
+  } catch (error) {
+    if ((error as { errno?: number }).errno === 1062) return { created: false as const, reason: "duplicate" as const };
+    throw error;
+  }
+}
+
+export async function listUsers(): Promise<ManagedUser[]> {
+  await ensureAuthSchema();
+  const [rows] = await getPool().query<UserRow[]>(
+    "SELECT id, username, display_name, role, is_active, created_at FROM users ORDER BY is_active ASC, created_at DESC",
+  );
+  return rows.map((row) => ({
+    id: String(row.id),
+    username: row.username,
+    displayName: row.display_name,
+    role: row.role,
+    isActive: Boolean(row.is_active),
+    createdAt: row.created_at?.toISOString() ?? new Date().toISOString(),
+  }));
+}
+
+export async function updateManagedUser(userId: string, input: { role: AuthRole | null; isActive: boolean }) {
+  await ensureAuthSchema();
+  await getPool().execute(
+    "UPDATE users SET role = ?, is_active = ? WHERE id = ?",
+    [input.role, input.isActive, userId],
+  );
+  if (!input.isActive || !input.role) {
+    await getPool().execute("DELETE FROM user_sessions WHERE user_id = ?", [userId]);
+  }
 }
 
 export async function createSession(userId: string) {
@@ -143,7 +187,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     SELECT u.id, u.username, u.display_name, u.password_hash, u.role
     FROM user_sessions s
     INNER JOIN users u ON u.id = s.user_id
-    WHERE s.token_hash = ? AND s.expires_at > NOW() AND u.is_active = TRUE
+    WHERE s.token_hash = ? AND s.expires_at > NOW() AND u.is_active = TRUE AND u.role IS NOT NULL
     LIMIT 1
   `, [hashSessionToken(token)]);
 

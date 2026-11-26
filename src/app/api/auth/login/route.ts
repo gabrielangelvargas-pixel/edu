@@ -13,11 +13,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    const user = await authenticateUser(parsed.data.username, parsed.data.password);
-    if (!user) {
+    const result = await authenticateUser(parsed.data.username, parsed.data.password);
+    if (result.status === "invalid") {
       return Response.json({ error: "Usuario o contraseña incorrectos." }, { status: 401 });
     }
+    if (result.status === "pending") {
+      return Response.json({ error: "Tu cuenta todavía está pendiente de activación por un administrador." }, { status: 403 });
+    }
 
+    const { user } = result;
     await createSession(user.id);
     return Response.json({ user: { username: user.username, displayName: user.displayName, role: user.role } });
   } catch (error) {
