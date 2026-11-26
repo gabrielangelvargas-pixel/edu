@@ -1,22 +1,13 @@
 "use client";
 
 import {
-  Activity, AlertTriangle, Boxes, CheckCircle2, ChevronRight, CircleGauge, Factory,
-  LayoutDashboard, LogOut, Menu, PackagePlus, Search, Users, Weight, X,
+  AlertTriangle, Boxes, CheckCircle2, CircleGauge, PackagePlus, Search, Weight, X,
 } from "lucide-react";
-import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
+import { AppNavigation } from "./app-navigation";
 import type { AuthUser } from "@/types/auth";
 import type { DashboardData, LotSummary, Priority } from "@/types/domain";
 import styles from "./dashboard.module.css";
-
-const navItems = [
-  { label: "Resumen", icon: LayoutDashboard, active: true },
-  { label: "Lotes", icon: Boxes },
-  { label: "Procesos", icon: Activity },
-  { label: "Modelos", icon: Factory },
-  { label: "Operadores", icon: Users },
-];
 
 const formatWeight = (value: number) => new Intl.NumberFormat("es-AR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value);
 const formatDate = (value: string) => new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "short" }).format(new Date(`${value}T12:00:00`));
@@ -25,10 +16,7 @@ export function Dashboard({ initialData, user, dateLabel }: { initialData: Dashb
   const data = initialData;
   const [query, setQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const firstName = user.displayName.split(/\s+/)[0];
-  const initials = user.displayName.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
-  const roleLabel = user.role === "admin" ? "Administrador" : user.role === "supervisor" ? "Supervisor" : "Operario";
 
   const filteredLots = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("es");
@@ -37,42 +25,17 @@ export function Dashboard({ initialData, user, dateLabel }: { initialData: Dashb
   }, [data.lots, query]);
 
   return (
-    <div className={styles.shell}>
-      <aside className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ""}`}>
-        <div className={styles.brand}>
-          <span className={styles.brandMark}><span /></span>
-          <div><strong>CADENA</strong><small>Control de producción</small></div>
-          <button className={styles.closeMenu} onClick={() => setMenuOpen(false)} aria-label="Cerrar menú"><X size={20} /></button>
-        </div>
-        <nav className={styles.nav} aria-label="Navegación principal">
-          <p>OPERACIÓN</p>
-          {navItems.map(({ label, icon: Icon, active }) => (
-            <button className={active ? styles.navActive : ""} key={label}><Icon size={18} /><span>{label}</span>{active && <i />}</button>
-          ))}
-          {user.role === "admin" && <><p>ADMINISTRACIÓN</p><Link href="/admin/users"><Users size={18} /><span>Usuarios</span></Link></>}
-        </nav>
-        <div className={styles.sidebarFoot}>
-          <div className={styles.avatar}>{initials}</div>
-          <div><strong>{user.displayName}</strong><small>{roleLabel}</small></div>
-          <form action="/api/auth/logout" method="post"><button type="submit" title="Cerrar sesión" aria-label="Cerrar sesión"><LogOut size={17} /></button></form>
-        </div>
-      </aside>
-
-      {menuOpen && <button className={styles.scrim} onClick={() => setMenuOpen(false)} aria-label="Cerrar menú" />}
-
-      <main className={styles.main}>
-        <header className={styles.topbar}>
-          <button className={styles.menuButton} onClick={() => setMenuOpen(true)} aria-label="Abrir menú"><Menu size={22} /></button>
-          <div><p>{dateLabel}</p><h1>Buen día, {firstName}</h1></div>
+    <>
+        <AppNavigation user={user} current="summary" title={`Buen día, ${firstName}`} subtitle={dateLabel}>
           <div className={styles.topActions}>
             <label className={styles.search}><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lote..." /></label>
             <button className={styles.primaryButton} onClick={() => setModalOpen(true)}><PackagePlus size={18} />Nuevo lote</button>
           </div>
-        </header>
+        </AppNavigation>
 
-        <div className={styles.content}>
+        <main className={styles.content}>
           <section className={styles.hero}>
-            <div><span className={styles.eyebrow}>PANEL DE PRODUCCIÓN</span><h2>Todo el taller, de un vistazo.</h2><p>Seguimiento de lotes, pesos y procesos en tiempo real.</p></div>
+            <div><span className={styles.eyebrow}>PANEL DE PRODUCCIÓN</span><h1>Todo el taller, de un vistazo.</h1><p>Seguimiento de lotes, pesos y procesos en tiempo real.</p></div>
             <div className={`${styles.modeBadge} ${data.source === "mysql" ? styles.live : ""}`}><span />{data.source === "mysql" ? "MySQL conectado" : "Sin conexión"}</div>
           </section>
 
@@ -85,8 +48,8 @@ export function Dashboard({ initialData, user, dateLabel }: { initialData: Dashb
             <Metric icon={<CircleGauge size={20} />} label="Rendimiento medio" value={`${data.stats.averageYield.toFixed(1)}%`} detail="Sobre lotes terminados" highlight />
           </section>
 
-          <section className={styles.panel}>
-            <div className={styles.panelHeader}><div><span className={styles.eyebrow}>FLUJO ACTUAL</span><h3>Lotes por proceso</h3></div><button>Ver procesos <ChevronRight size={16} /></button></div>
+          <section className={styles.panel} id="procesos" aria-labelledby="procesos-title">
+            <div className={styles.panelHeader}><div><span className={styles.eyebrow}>FLUJO ACTUAL</span><h2 id="procesos-title">Lotes por proceso</h2></div></div>
             <div className={styles.pipeline}>
               {data.processes.map((process, index) => (
                 <div className={styles.processStep} key={process.id}>
@@ -98,8 +61,8 @@ export function Dashboard({ initialData, user, dateLabel }: { initialData: Dashb
             </div>
           </section>
 
-          <section className={styles.panel}>
-            <div className={styles.panelHeader}><div><span className={styles.eyebrow}>ACTIVIDAD</span><h3>Lotes recientes</h3></div><button>Ver todos <ChevronRight size={16} /></button></div>
+          <section className={styles.panel} id="lotes" aria-labelledby="lotes-title">
+            <div className={styles.panelHeader}><div><span className={styles.eyebrow}>ACTIVIDAD</span><h2 id="lotes-title">Lotes recientes</h2></div></div>
             <div className={styles.tableWrap}>
               <table>
                 <thead><tr><th>Lote / modelo</th><th>Proceso actual</th><th>Operador</th><th>Peso</th><th>Avance</th><th>Entrega</th></tr></thead>
@@ -110,11 +73,10 @@ export function Dashboard({ initialData, user, dateLabel }: { initialData: Dashb
               {filteredLots.length === 0 && <div className={styles.empty}>No encontramos lotes para “{query}”.</div>}
             </div>
           </section>
-        </div>
-      </main>
+        </main>
 
       {modalOpen && <NewLotModal data={data} onClose={() => setModalOpen(false)} />}
-    </div>
+    </>
   );
 }
 
