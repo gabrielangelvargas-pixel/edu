@@ -12,7 +12,7 @@
 .rollingForm button { justify-self: start; }
 .search { width: 230px; height: 40px; border: 1px solid var(--line); border-radius: 8px; display: flex; gap: 8px; align-items: center; padding: 0 12px; color: #87928d; }
 .search:focus-within { border-color: #5b8975; box-shadow: 0 0 0 3px #e5f1eb; }
-.search input { width: 100%; border: 0; outline: 0; font-size: 12px; color: var(--ink); }
+.search input { width: 100%; border: 0; outline: 0; background: transparent; font-size: 12px; color: var(--ink); }
 .primaryButton { border: 0 !important; border-radius: 8px !important; background: var(--green) !important; color: #fff !important; height: 40px; padding: 0 16px !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: 12px; cursor: pointer; box-shadow: 0 3px 8px rgba(23,79,59,.18); }
 .primaryButton:hover { background: #0e402f !important; }
 .primaryButton:disabled { opacity: .65; cursor: wait; }

@@ -3,7 +3,7 @@
 import { AlertTriangle, PackagePlus, Search, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import type { DashboardData, Priority } from "@/types/domain";
-import { LotsTable } from "./lots-table";
+import { LotsRegistry } from "./lots-table";
 import styles from "./dashboard.module.css";
 
 type LotsData = Pick<DashboardData, "lots" | "databaseMessage">;
@@ -13,7 +13,7 @@ export function LotsView({ data, today }: { data: LotsData; today: string }) {
   const [modalOpen, setModalOpen] = useState(false);
   const search = query.trim().toLocaleLowerCase("es");
   const filteredLots = data.lots.filter((lot) =>
-    [lot.code, lot.process, lot.operator].some((value) => value.toLocaleLowerCase("es").includes(search)),
+    [lot.code, lot.status, lot.priority].some((value) => value.toLocaleLowerCase("es").includes(search)),
   );
 
   return (
@@ -22,7 +22,7 @@ export function LotsView({ data, today }: { data: LotsData; today: string }) {
         <label className={styles.search}>
           <Search size={17} aria-hidden="true" />
           <input type="search" aria-label="Buscar lote" value={query}
-            onChange={(event) => setQuery(event.target.value)} placeholder="Buscar lote..." />
+            onChange={(event) => setQuery(event.target.value)} placeholder="Código, estado o prioridad" />
         </label>
         <button id="nuevo-lote" type="button" className={styles.primaryButton} disabled={Boolean(data.databaseMessage)}
           onClick={() => setModalOpen(true)}><PackagePlus size={18} aria-hidden="true" />Nuevo lote</button>
@@ -31,7 +31,7 @@ export function LotsView({ data, today }: { data: LotsData; today: string }) {
         <p className={styles.warning}><AlertTriangle size={17} />{data.databaseMessage}</p>
       ) : (
         <section className={styles.panel} aria-label="Listado de lotes">
-          <LotsTable lots={filteredLots} emptyMessage={search ? "No encontramos lotes para esa búsqueda." : undefined} />
+          <LotsRegistry lots={filteredLots} emptyMessage={search ? "No encontramos lotes para esa búsqueda." : undefined} />
         </section>
       )}
       {modalOpen && <NewLotModal today={today} onClose={() => setModalOpen(false)} />}
@@ -65,7 +65,7 @@ function NewLotModal({ today, onClose }: { today: string; onClose: () => void })
         <form onSubmit={submit}>
           <div className={styles.formGrid}>
             <label><span>Fecha de alta del lote</span><input name="enteredOn" type="date" defaultValue={today} max={today} required /></label>
-            <label><span>Peso de entrada del lingote (g)</span><input name="initialWeight" type="number" min="0.001" max="999999" step="0.001" required /></label>
+            <label><span>Gramaje inicial (g)</span><input name="initialWeight" type="number" min="0.001" max="999999" step="0.001" required /></label>
             <label><span>Prioridad</span><select name="priority" defaultValue="Normal"><option>Normal</option><option>Alta</option><option>Urgente</option></select></label>
           </div>
           {error && <p className={styles.formError}><AlertTriangle size={16} />{error}</p>}

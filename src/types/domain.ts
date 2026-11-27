@@ -13,6 +13,7 @@ export type LotSummary = {
   status: LotStatus;
   priority: Priority;
   enteredAt: string;
+  updatedAt: string;
 };
 
 export type ProcessSummary = { id: string; name: string; activeLots: number; accent: string };

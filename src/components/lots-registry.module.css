@@ -1,0 +1,14 @@
+.scroll { overflow-x: auto; }
+.scroll:focus-visible { outline: 2px solid var(--green); outline-offset: -2px; }
+.table { width: 100%; min-width: 920px; border-collapse: collapse; font-size: 13px; }
+.table th, .table td { padding: 14px 16px; text-align: left; white-space: nowrap; }
+.table thead th { background: #f7faf8; color: #52655b; font-size: 11px; font-weight: 700; }
+.table tbody tr { border-top: 1px solid var(--line); }
+.table tbody tr:hover { background: #f7faf8; }
+.table tbody th { color: var(--green); letter-spacing: .025em; }
+.table .weight { text-align: right; font-variant-numeric: tabular-nums; }
+.table progress { display: block; accent-color: var(--green); width: 84px; height: 6px; margin-top: 4px; }
+.status, .priority { display: inline-block; border-radius: 999px; padding: 4px 9px; background: #eef2ef; color: #3e5148; font-size: 11px; font-weight: 700; }
+.status[data-status="En proceso"], .status[data-status="Terminado"] { background: #e3f1e9; color: #20553c; }
+.status[data-status="Observado"], .priority[data-priority="Alta"] { background: #fff0d4; color: #734b02; }
+.priority[data-priority="Urgente"] { background: #fbe6e4; color: #862e2a; }

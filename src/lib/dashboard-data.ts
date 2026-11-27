@@ -9,6 +9,7 @@ type LotRow = RowDataPacket & {
   id: number; code: string; process: string | null; process_id: number | null;
   operator: string | null; initial_weight: number; current_weight: number; progress: number;
   status: LotSummary["status"]; priority: LotSummary["priority"]; entered_at: Date;
+  updated_epoch: number | string;
 };
 
 const emptyDashboard: DashboardData = {
@@ -40,7 +41,8 @@ export async function getDashboardData({ allLots = false } = {}): Promise<Dashbo
       pool.query<LotRow[]>(`
         SELECT l.id, l.codigo AS code, p.nombre AS process, p.id AS process_id, o.nombre AS operator,
           l.gramaje_inicial AS initial_weight, l.gramaje_actual AS current_weight, l.avance AS progress,
-          l.estado AS status, l.prioridad AS priority, l.fecha_alta AS entered_at
+          l.estado AS status, l.prioridad AS priority, l.fecha_alta AS entered_at,
+          UNIX_TIMESTAMP(l.fecha_actualizacion) AS updated_epoch
         FROM lotes l
         LEFT JOIN procesos_lote lp ON lp.id = (
           SELECT actual.id FROM procesos_lote actual
@@ -72,6 +74,7 @@ export async function getDashboardData({ allLots = false } = {}): Promise<Dashbo
         processId: row.process_id === null ? null : String(row.process_id), operator: row.operator ?? "Sin asignar", initialWeight: Number(row.initial_weight),
         currentWeight: Number(row.current_weight), progress: Number(row.progress), status: row.status, priority: row.priority,
         enteredAt: row.entered_at.toISOString(),
+        updatedAt: new Date(Number(row.updated_epoch) * 1000).toISOString(),
       })),
     };
   } catch (error) {
