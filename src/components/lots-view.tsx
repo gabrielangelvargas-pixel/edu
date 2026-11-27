@@ -6,14 +6,14 @@ import type { DashboardData, Priority } from "@/types/domain";
 import { LotsTable } from "./lots-table";
 import styles from "./dashboard.module.css";
 
-type LotsData = Pick<DashboardData, "lots" | "models" | "databaseMessage">;
+type LotsData = Pick<DashboardData, "lots" | "databaseMessage">;
 
 export function LotsView({ data, today }: { data: LotsData; today: string }) {
   const [query, setQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const search = query.trim().toLocaleLowerCase("es");
   const filteredLots = data.lots.filter((lot) =>
-    [lot.code, lot.model, lot.process, lot.operator].some((value) => value.toLocaleLowerCase("es").includes(search)),
+    [lot.code, lot.process, lot.operator].some((value) => value.toLocaleLowerCase("es").includes(search)),
   );
 
   return (
@@ -34,12 +34,12 @@ export function LotsView({ data, today }: { data: LotsData; today: string }) {
           <LotsTable lots={filteredLots} emptyMessage={search ? "No encontramos lotes para esa búsqueda." : undefined} />
         </section>
       )}
-      {modalOpen && <NewLotModal data={data} today={today} onClose={() => setModalOpen(false)} />}
+      {modalOpen && <NewLotModal today={today} onClose={() => setModalOpen(false)} />}
     </main>
   );
 }
 
-function NewLotModal({ data, today, onClose }: { data: LotsData; today: string; onClose: () => void }) {
+function NewLotModal({ today, onClose }: { today: string; onClose: () => void }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -47,7 +47,6 @@ function NewLotModal({ data, today, onClose }: { data: LotsData; today: string; 
     event.preventDefault(); setSubmitting(true); setError("");
     const form = new FormData(event.currentTarget);
     const payload = {
-      modelId: String(form.get("modelId")),
       initialWeight: Number(form.get("initialWeight")), enteredOn: String(form.get("enteredOn")),
       priority: String(form.get("priority")) as Priority,
     };
@@ -66,7 +65,6 @@ function NewLotModal({ data, today, onClose }: { data: LotsData; today: string; 
         <form onSubmit={submit}>
           <div className={styles.formGrid}>
             <label><span>Fecha de alta del lote</span><input name="enteredOn" type="date" defaultValue={today} max={today} required /></label>
-            <label><span>Modelo de cadena</span><select name="modelId" required>{data.models.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
             <label><span>Peso de entrada del lingote (g)</span><input name="initialWeight" type="number" min="0.001" max="999999" step="0.001" required /></label>
             <label><span>Prioridad</span><select name="priority" defaultValue="Normal"><option>Normal</option><option>Alta</option><option>Urgente</option></select></label>
           </div>

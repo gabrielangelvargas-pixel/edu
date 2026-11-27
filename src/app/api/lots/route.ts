@@ -7,7 +7,6 @@ import { toMilligrams } from "@/lib/weights";
 import { getWorkshopDate } from "@/lib/workshop-date";
 
 const createLotSchema = z.object({
-  modelId: z.string().regex(/^[1-9]\d{0,18}$/),
   initialWeight: z.number().min(0.001).max(999999)
     .refine((value) => toMilligrams(value) / 1000 === value),
   enteredOn: z.iso.date(),
@@ -32,14 +31,6 @@ export async function POST(request: Request) {
     const connection = await getPool().getConnection();
     try {
       await connection.beginTransaction();
-      const [rows] = await connection.execute<RowDataPacket[]>(
-        "SELECT id FROM modelos_cadena WHERE id = ? AND activo = TRUE", [input.modelId],
-      );
-      if (!rows[0]) {
-        await connection.rollback();
-        return Response.json({ error: "Verificá que el modelo esté activo." }, { status: 409 });
-      }
-
       // Lock the day's counter until the lot is saved.
       await connection.execute(`
         INSERT INTO secuencias_diarias_lotes (fecha_alta) VALUES (?)
@@ -59,10 +50,10 @@ export async function POST(request: Request) {
       await connection.execute("UPDATE secuencias_diarias_lotes SET ultimo_numero = ? WHERE fecha_alta = ?", [next, input.enteredOn]);
 
       const [result] = await connection.execute<ResultSetHeader>(`
-        INSERT INTO lotes (codigo, modelo_id, gramaje_inicial,
+        INSERT INTO lotes (codigo, gramaje_inicial,
           gramaje_actual, estado, prioridad, fecha_alta)
-        VALUES (?, ?, ?, ?, 'Pendiente', ?, ?)
-      `, [code, input.modelId, input.initialWeight,
+        VALUES (?, ?, ?, 'Pendiente', ?, ?)
+      `, [code, input.initialWeight,
         input.initialWeight, input.priority, enteredAt]);
       await connection.commit();
       return Response.json({ id: result.insertId, code }, { status: 201 });

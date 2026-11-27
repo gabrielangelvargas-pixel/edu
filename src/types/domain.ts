@@ -4,8 +4,6 @@ export type Priority = "Normal" | "Alta" | "Urgente";
 export type LotSummary = {
   id: string;
   code: string;
-  model: string;
-  modelId: string;
   process: string;
   processId: string | null;
   operator: string;
@@ -15,7 +13,6 @@ export type LotSummary = {
   status: LotStatus;
   priority: Priority;
   enteredAt: string;
-  dueAt: string | null;
 };
 
 export type ProcessSummary = { id: string; name: string; activeLots: number; accent: string };
@@ -24,9 +21,7 @@ export type CatalogOption = { id: string; name: string };
 export type DashboardData = {
   source: "mysql" | "error";
   databaseMessage?: string;
-  stats: { activeLots: number; totalWeight: number; completedToday: number; averageYield: number };
+  stats: { activeLots: number; totalWeight: number; completedLots: number; averageYield: number };
   processes: ProcessSummary[];
   lots: LotSummary[];
-  models: CatalogOption[];
-  operators: CatalogOption[];
 };

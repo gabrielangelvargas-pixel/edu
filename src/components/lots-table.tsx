@@ -13,7 +13,7 @@ export function LotsTable({ lots, emptyMessage = "Todavía no hay lotes registra
   return (
     <div className={styles.tableWrap}>
       <table>
-        <thead><tr><th>Lote / modelo</th><th>Proceso actual</th><th>Operador</th><th>Peso</th><th>Avance</th><th>Entrega</th></tr></thead>
+        <thead><tr><th>Lote</th><th>Proceso actual</th><th>Operario</th><th>Peso</th><th>Avance</th><th>Alta</th></tr></thead>
         <tbody>{lots.map((lot) => <LotRow lot={lot} key={lot.id} />)}</tbody>
       </table>
     </div>
@@ -23,12 +23,12 @@ export function LotsTable({ lots, emptyMessage = "Todavía no hay lotes registra
 function LotRow({ lot }: { lot: LotSummary }) {
   return (
     <tr>
-      <td><div className={styles.lotTitle}><span className={styles.lotIcon}>{lot.code.slice(-2)}</span><div><strong>{lot.code}</strong><small>{lot.model} · <em className={styles[`priority${lot.priority}`]}>{lot.priority}</em></small></div></div></td>
+      <td><div className={styles.lotTitle}><span className={styles.lotIcon}>{lot.code.slice(-2)}</span><div><strong>{lot.code}</strong><small><em className={styles[`priority${lot.priority}`]}>{lot.priority}</em></small></div></div></td>
       <td><span className={styles.processPill}>{lot.process}</span></td>
       <td>{lot.operator}</td>
       <td><strong>{formatWeight(lot.currentWeight)} g</strong><small className={styles.cellSub}>de {formatWeight(lot.initialWeight)} g</small></td>
       <td><div className={styles.progressLabel}><span>{lot.progress}%</span><small>{lot.status}</small></div><div className={styles.progress}><i style={{ width: `${lot.progress}%` }} /></div></td>
-      <td>{lot.dueAt ? <><strong>{formatDate(lot.dueAt)}</strong><small className={styles.cellSub}>Programada</small></> : "Sin programar"}</td>
+      <td>{formatDate(lot.enteredAt.slice(0, 10))}</td>
     </tr>
   );
 }

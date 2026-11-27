@@ -14,7 +14,7 @@ export function Dashboard({ data }: { data: DashboardData }) {
       <section className={styles.stats} aria-label="Indicadores">
         <Metric icon={<Boxes size={20} />} label="Lotes activos" value={String(data.stats.activeLots)} detail="Pendientes o en curso" />
         <Metric icon={<Weight size={20} />} label="Metal en proceso" value={`${formatWeight(data.stats.totalWeight)} g`} detail="Peso actual registrado" />
-        <Metric icon={<CheckCircle2 size={20} />} label="Finalizados hoy" value={String(data.stats.completedToday)} detail="Listos para entrega" />
+        <Metric icon={<CheckCircle2 size={20} />} label="Lotes terminados" value={String(data.stats.completedLots)} detail="Total registrado" />
         <Metric icon={<CircleGauge size={20} />} label="Rendimiento medio" value={`${data.stats.averageYield.toFixed(1)}%`} detail="Sobre lotes terminados" highlight />
       </section>
 

@@ -40,8 +40,7 @@ export async function PUT(request: Request) {
       JOIN lotes l ON l.id = lp.lote_id
       JOIN procesos p ON p.id = lp.proceso_id AND p.identificador_url = ?
       JOIN operarios o ON o.id = ? AND (o.activo = TRUE OR o.id = lp.operario_id)
-      SET l.operario_asignado_id = IF(l.proceso_actual_id = lp.proceso_id, o.id, l.operario_asignado_id),
-          lp.operario_id = o.id, lp.fecha_inicio = ?, lp.hora_inicio_registrada = ?
+      SET lp.operario_id = o.id, lp.fecha_inicio = ?, lp.hora_inicio_registrada = ?
       WHERE lp.id = ? AND lp.fecha_inicio IS NOT NULL
         AND (? OR lp.hora_inicio_registrada = FALSE)
         AND DATE(l.fecha_alta) <= ?
@@ -76,7 +75,7 @@ export async function POST(request: Request) {
       await connection.beginTransaction();
       const [lots] = await connection.execute<(RowDataPacket & { weight: string | number })[]>(`
         SELECT gramaje_actual AS weight FROM lotes
-        WHERE id = ? AND proceso_actual_id IS NULL AND estado = 'Pendiente' AND DATE(fecha_alta) <= ?
+        WHERE id = ? AND estado = 'Pendiente' AND DATE(fecha_alta) <= ?
         FOR UPDATE
       `, [lotId, enteredOn]);
       const lot = lots[0];
@@ -92,6 +91,14 @@ export async function POST(request: Request) {
       }
 
       const startedAt = entryTimestamp(enteredOn, enteredTime);
+      const [active] = await connection.execute<RowDataPacket[]>(`
+        SELECT id FROM procesos_lote WHERE lote_id = ? AND estado IN ('En proceso', 'Observado')
+          AND fecha_inicio IS NOT NULL AND fecha_fin IS NULL LIMIT 1
+      `, [lotId]);
+      if (active.length) {
+        await connection.rollback();
+        return Response.json({ error: "El lote ya tiene un proceso activo." }, { status: 409 });
+      }
       const [history] = await connection.execute<(RowDataPacket & { id: string; started: number })[]>(`
         SELECT CAST(id AS CHAR) AS id, (fecha_inicio IS NOT NULL OR estado <> 'Pendiente') AS started
         FROM procesos_lote WHERE lote_id = ? AND proceso_id = ?
@@ -112,8 +119,8 @@ export async function POST(request: Request) {
         `, [lotId, process.id, operatorId, lot.weight, startedAt]);
       }
       await connection.execute(`
-        UPDATE lotes SET proceso_actual_id = ?, operario_asignado_id = ?, estado = 'En proceso' WHERE id = ?
-      `, [process.id, operatorId, lotId]);
+        UPDATE lotes SET estado = 'En proceso' WHERE id = ?
+      `, [lotId]);
       await connection.commit();
       return Response.json({ ok: true });
     } catch (error) {
@@ -158,7 +165,7 @@ export async function PATCH(request: Request) {
       await connection.beginTransaction();
       const [rows] = await connection.execute<ProcessRow[]>(`
         SELECT CAST(lp.lote_id AS CHAR) AS lotId, lp.estado AS status,
-          (l.proceso_actual_id = lp.proceso_id AND l.estado = 'En proceso') AS isCurrent,
+          (l.estado = 'En proceso' AND lp.fecha_inicio IS NOT NULL AND lp.fecha_fin IS NULL) AS isCurrent,
           DATE_FORMAT(lp.fecha_inicio, '%Y-%m-%d') AS enteredOn, lp.gramaje_entrada AS inputWeight
         FROM procesos_lote lp
         JOIN procesos p ON p.id = lp.proceso_id

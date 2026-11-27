@@ -64,22 +64,13 @@ CREATE TABLE IF NOT EXISTS secuencias_diarias_lotes (
 CREATE TABLE IF NOT EXISTS lotes (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   codigo VARCHAR(30) NOT NULL UNIQUE,
-  modelo_id BIGINT UNSIGNED NOT NULL,
-  proceso_actual_id BIGINT UNSIGNED NULL DEFAULT NULL,
-  operario_asignado_id BIGINT UNSIGNED NULL,
   gramaje_inicial DECIMAL(12,3) NOT NULL,
   gramaje_actual DECIMAL(12,3) NOT NULL,
   avance TINYINT UNSIGNED NOT NULL DEFAULT 0,
   estado ENUM('Pendiente','En proceso','Observado','Terminado') NOT NULL DEFAULT 'Pendiente',
   prioridad ENUM('Normal','Alta','Urgente') NOT NULL DEFAULT 'Normal',
   fecha_alta DATETIME NOT NULL,
-  fecha_entrega DATE NULL DEFAULT NULL,
-  fecha_finalizacion DATETIME NULL,
-  fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  fecha_actualizacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_lote_modelo FOREIGN KEY (modelo_id) REFERENCES modelos_cadena(id),
-  CONSTRAINT fk_lote_proceso FOREIGN KEY (proceso_actual_id) REFERENCES procesos(id),
-  CONSTRAINT fk_lote_operario FOREIGN KEY (operario_asignado_id) REFERENCES operarios(id)
+  fecha_actualizacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS procesos_lote (

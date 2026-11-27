@@ -43,7 +43,7 @@ export default async function RollingPage() {
         {records?.map((record) => (
           <article key={record.id ? `process-${record.id}` : `lot-${record.lotId}`} className={styles.panel}>
             <div className={styles.panelHeader}>
-              <h2>Lote {record.code} · {record.model}</h2>
+              <h2>Lote {record.code}</h2>
               <span className={styles.processPill}>{record.id === null ? "Sin proceso" : record.status === "Terminado" ? "Finalizado" : record.status}</span>
             </div>
             <dl className={styles.rollingDetails}>

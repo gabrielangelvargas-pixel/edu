@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { RowDataPacket } from "mysql2";
+import type { PoolConnection } from "mysql2/promise";
 import { getPool } from "@/lib/db";
 
 type TableRename = readonly [string, string, Readonly<Record<string, string>>];
@@ -102,9 +103,33 @@ declare global {
   var cadenasSpanishSchema: Promise<void> | undefined;
 }
 
-// Only identifiers from the fixed mapping above are interpolated in DDL.
 function identifier(name: string) {
-  return `\`${name}\``;
+  return `\`${name.replaceAll("\`", "\`\`")}\``;
+}
+
+const obsoleteLotColumns = [
+  "modelo_id", "proceso_actual_id", "operario_asignado_id",
+  "fecha_entrega", "fecha_finalizacion", "fecha_creacion",
+];
+
+async function simplifyLots(connection: PoolConnection) {
+  const [columns] = await connection.query<(RowDataPacket & { name: string })[]>(`
+    SELECT COLUMN_NAME AS name FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'lotes'
+  `);
+  const obsolete = obsoleteLotColumns.filter((name) => columns.some((column) => column.name === name));
+  if (!obsolete.length) return;
+
+  const [foreignKeys] = await connection.query<(RowDataPacket & { name: string; columnName: string })[]>(`
+    SELECT CONSTRAINT_NAME AS name, COLUMN_NAME AS columnName FROM information_schema.KEY_COLUMN_USAGE
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'lotes' AND REFERENCED_TABLE_NAME IS NOT NULL
+  `);
+  const constraints = new Set(foreignKeys.filter((key) => obsolete.includes(key.columnName)).map((key) => key.name));
+  const clauses = [
+    ...Array.from(constraints, (name) => `DROP FOREIGN KEY ${identifier(name)}`),
+    ...obsolete.map((name) => `DROP COLUMN ${identifier(name)}`),
+  ];
+  await connection.query(`ALTER TABLE lotes ${clauses.join(", ")}`);
 }
 
 async function migrateSpanishSchema() {
@@ -155,6 +180,7 @@ async function migrateSpanishSchema() {
       for (const { table, clauses } of columnRenames) {
         await connection.query(`ALTER TABLE ${identifier(table)} ${clauses.join(", ")}`);
       }
+      await simplifyLots(connection);
     } finally {
       await connection.query("SELECT RELEASE_LOCK(SHA2(CONCAT(DATABASE(), ':nomenclatura-cadenas'), 256))");
     }
